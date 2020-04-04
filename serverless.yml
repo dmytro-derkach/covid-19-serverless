@@ -1,0 +1,49 @@
+service: covid-19
+
+custom:
+  settings:
+    ACCOUNT_ID: "338027781746"
+    REGION: "eu-central-1"
+    DATABASE_NAME: "covid-19"
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  memorySize: 512
+  region: eu-central-1
+  stage: prod
+  environment: ${self:custom.settings}
+
+  vpc:
+    securityGroupIds:
+      - sg-02f16a43dc2a927f5
+    subnetIds:
+      - subnet-0bba3bc1696a2c495
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "sqs:sendMessage"
+      Resource: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19*"
+    - Effect: "Allow"
+      Action:
+        - "ssm:Describe*"
+        - "ssm:Get*"
+        - "ssm:List*"
+      Resource: "*"
+
+functions:
+#  sqsProvider:
+#    handler: provider/provider.sqsProvider
+#    timeout: 30
+#    events:
+#      - schedule: rate(1 minute)
+#
+#  sqsConsumer:
+#    handler: consumer/consumer.sqsConsumer
+#    timeout: 30
+#    events:
+#      - sqs:
+#          arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:stg-app-queue"
+#          batchSize: 1
+#          enabled: true
