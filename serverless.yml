@@ -5,6 +5,7 @@ custom:
     ACCOUNT_ID: "338027781746"
     REGION: "eu-central-1"
     DATABASE_NAME: "covid-19"
+    ACTUAL_DATA_PARSER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-actual-data-parser"
 
 provider:
   name: aws
@@ -13,12 +14,6 @@ provider:
   region: eu-central-1
   stage: prod
   environment: ${self:custom.settings}
-
-  vpc:
-    securityGroupIds:
-      - sg-0b4604f099daec60a
-    subnetIds:
-      - subnet-0bba3bc1696a2c495
 
   iamRoleStatements:
     - Effect: "Allow"
@@ -33,17 +28,17 @@ provider:
       Resource: "*"
 
 functions:
-#  sqsProvider:
-#    handler: provider/provider.sqsProvider
-#    timeout: 30
-#    events:
-#      - schedule: rate(1 minute)
-#
-#  sqsConsumer:
-#    handler: consumer/consumer.sqsConsumer
-#    timeout: 30
-#    events:
-#      - sqs:
-#          arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:stg-app-queue"
-#          batchSize: 1
-#          enabled: true
+  actualScheduler:
+      handler: handlers/actualScheduler.handler
+      timeout: 30
+      events:
+        - schedule: rate(1 minute)
+
+  actualDataParser:
+      handler: handlers/actualDataParser.handler
+      timeout: 30
+      events:
+        - sqs:
+            arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-actual-data-parser"
+            batchSize: 1
+            enabled: true
