@@ -17,8 +17,7 @@
   },
   "lint-staged": {
     "*.{js, json}": [
-      "eslint",
-      "git add"
+      "eslint"
     ]
   },
   "devDependencies": {
