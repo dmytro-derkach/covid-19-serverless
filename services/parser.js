@@ -46,7 +46,7 @@ const parseAndSaveActualData = async (payload) => {
     commitSHA: payload.commitSHA,
     isProcessed: true,
   });
-  await removeDeprecetedData(ParserSession.ACTUAL_SESSION);
+  await removeDeprecatedData(ParserSession.ACTUAL_SESSION);
 };
 
 const processAllActualData = async (commitSHA) => {
@@ -114,7 +114,7 @@ const processActualDataByCountries = async (commitSHA) => {
   return { cases, summary };
 };
 
-const removeDeprecetedData = async (type) => {
+const removeDeprecatedData = async (type) => {
   const deprecetedData = (
     await ParserSession.getDeprecetedlSessions({
       type,
