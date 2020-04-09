@@ -7,7 +7,9 @@ const validator = require("@validators/actualDataParser");
 const sqsJsonBodyParser = require("@middy/sqs-json-body-parser");
 
 const processHandler = async (event) => {
-  await parseAndSaveActualData(event.Records[0].body);
+  const payload = event.Records[0].body;
+  console.log("payload", payload);
+  await parseAndSaveActualData(payload);
   return {};
 };
 

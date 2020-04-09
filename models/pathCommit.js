@@ -10,7 +10,21 @@ const pathCommitSchema = new mongoose.Schema(
   { timestamps: true, versionKey: false }
 );
 
-pathCommitSchema.statics = {};
+pathCommitSchema.statics = {
+  findDataByCommit({ path, branch, commitSHA }) {
+    return PathCommit.findOne({ path, branch, commitSHA });
+  },
+
+  async saveCommit({ path, branch, commitSHA, isProcessed }) {
+    let data = await PathCommit.findOne({ path, branch });
+    if (!data) {
+      data = new PathCommit({ path, branch });
+    }
+    data.commitSHA = commitSHA;
+    data.isProcessed = isProcessed;
+    return data.save();
+  },
+};
 
 pathCommitSchema.methods = {};
 
