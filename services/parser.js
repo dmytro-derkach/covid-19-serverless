@@ -116,7 +116,7 @@ const processActualDataByCountries = async (commitSHA) => {
 
 const removeDeprecatedData = async (type) => {
   const deprecetedData = (
-    await ParserSession.getDeprecetedlSessions({
+    await ParserSession.getDeprecatedlSessions({
       type,
     })
   ).map((el) => el.commitSHA);

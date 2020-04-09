@@ -22,7 +22,7 @@ parserSessionSchema.statics = {
     return ParserSession.create({ type, commitSHA, isProcessed });
   },
 
-  getDeprecetedlSessions({ type }) {
+  getDeprecatedlSessions({ type }) {
     return ParserSession.find({ type }).sort({ createdAt: -1 }).skip(2).exec();
   },
 
