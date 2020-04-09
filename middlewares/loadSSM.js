@@ -1,5 +1,5 @@
 const { SSM_PATH } = require("@constants");
-const { ssm } = require("middy/middlewares");
+const ssm = require("@middy/ssm");
 
 module.exports = () =>
   ssm({

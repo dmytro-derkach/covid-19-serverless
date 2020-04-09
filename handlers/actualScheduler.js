@@ -1,5 +1,5 @@
 require("module-alias/register");
-const middy = require("middy");
+const middy = require("@middy/core");
 const loadSSM = require("@middlewares/loadSSM");
 const connectDb = require("@middlewares/connectDb");
 const { checkAndStartActualSession } = require("@services/parser");

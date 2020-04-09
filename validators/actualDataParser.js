@@ -1,4 +1,4 @@
-const { validator } = require("middy/middlewares");
+const validator = require("@middy/validator");
 
 const inputSchema = {
   type: "object",
