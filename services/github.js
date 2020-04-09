@@ -13,7 +13,7 @@ const getLastCommitHash = async (path, branch = "master") => {
   const link = `${apiRepoLink}${apiCommitHashPath
     .replace("{branch}", branch)
     .replace("{path}", encodeURIComponent(path))}`;
-  return await axios.get(link, options);
+  return (await axios.get(link, options)).data.sha;
 };
 
 const getContentByPath = async (path, branch = "master") => {

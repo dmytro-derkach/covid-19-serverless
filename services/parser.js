@@ -14,11 +14,10 @@ const { actualDataParserQueueUrl } = require("@vars");
 const CSV = require("csv-string");
 
 const checkAndStartActualSession = async () => {
-  const response = await getLastCommitHash(
+  const commitSHA = await getLastCommitHash(
     ACTUAL_CASES_PATH,
     ACTUAL_DATA_BRANCH
   );
-  const commitSHA = response.data.sha;
   if (
     !(await PathCommit.findDataByCommit({
       path: ACTUAL_CASES_PATH,
