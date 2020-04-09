@@ -5,6 +5,7 @@ const actualSummarySchema = new mongoose.Schema(
     confirmed: { type: Number },
     deaths: { type: Number },
     recovered: { type: Number },
+    active: { type: Number },
     affectedCountries: { type: Number },
     commitSHA: { type: String, required: true },
   },

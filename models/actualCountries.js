@@ -9,6 +9,7 @@ const actualCountriesSchema = new mongoose.Schema(
     confirmed: { type: Number },
     deaths: { type: Number },
     recovered: { type: Number },
+    active: { type: Number },
     commitSHA: { type: String, required: true },
   },
   { timestamps: true, versionKey: false }
