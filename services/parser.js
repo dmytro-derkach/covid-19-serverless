@@ -115,16 +115,16 @@ const processActualDataByCountries = async (commitSHA) => {
 };
 
 const removeDeprecatedData = async (type) => {
-  const deprecetedData = (
-    await ParserSession.getDeprecatedlSessions({
+  const deprecatedData = (
+    await ParserSession.getDeprecatedSessions({
       type,
     })
   ).map((el) => el.commitSHA);
-  if (deprecetedData.length) {
-    await ActualAll.removeByCommits(deprecetedData);
-    await ActualCountries.removeByCommits(deprecetedData);
-    await ActualSummary.removeByCommits(deprecetedData);
-    await ParserSession.removeByCommits(deprecetedData);
+  if (deprecatedData.length) {
+    await ActualAll.removeByCommits(deprecatedData);
+    await ActualCountries.removeByCommits(deprecatedData);
+    await ActualSummary.removeByCommits(deprecatedData);
+    await ParserSession.removeByCommits(deprecatedData);
   }
 };
 
