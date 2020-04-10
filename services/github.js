@@ -3,7 +3,7 @@ const { getGithubAuth } = require("@vars");
 const axios = require("axios");
 
 const apiRepoLink = `https://api.github.com/repos/${GITHUB_REPOSITORY}`;
-const apiCommitHashPath = "/commits/{branch}?path={path}&per_page=1";
+const apiCommitHashPath = "/commits?path={path}&sha={branch}per_page=1";
 const apiContentPath = "/contents/{path}?ref={branch}";
 
 const getLastCommitHash = async (path, branch = "master") => {
@@ -11,7 +11,7 @@ const getLastCommitHash = async (path, branch = "master") => {
     auth: getGithubAuth(),
   };
   const link = `${apiRepoLink}${apiCommitHashPath
-    .replace("{branch}", branch)
+    .replace("{branch}", encodeURIComponent(branch))
     .replace("{path}", encodeURIComponent(path))}`;
   return (await axios.get(link, options)).data.sha;
 };
