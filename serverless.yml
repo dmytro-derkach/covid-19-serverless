@@ -6,6 +6,8 @@ custom:
     REGION: "eu-central-1"
     DATABASE_NAME: "covid-19"
     ACTUAL_DATA_PARSER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-actual-data-parser"
+    ARCHIVE_DATA_PARSER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-data-parser"
+    ARCHIVE_SESSION_CREATOR_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-session-creator"
 
 provider:
   name: aws
@@ -34,6 +36,12 @@ functions:
       events:
         - schedule: rate(1 minute)
 
+  archiveScheduler:
+    handler: handlers/archiveScheduler.handler
+    timeout: 30
+    events:
+      - schedule: rate(1 minute)
+
   actualDataParser:
       handler: handlers/actualDataParser.handler
       timeout: 30
@@ -42,3 +50,21 @@ functions:
             arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-actual-data-parser"
             batchSize: 1
             enabled: true
+
+  archiveSessionCreator:
+    handler: handlers/archiveSessionCreator.handler
+    timeout: 30
+    events:
+      - sqs:
+          arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-session-creator"
+          batchSize: 1
+          enabled: true
+
+  archiveDataParser:
+    handler: handlers/archiveDataParser.handler
+    timeout: 30
+    events:
+      - sqs:
+          arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-data-parser"
+          batchSize: 1
+          enabled: true

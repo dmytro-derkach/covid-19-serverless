@@ -28,7 +28,18 @@ const getContentByPath = async (path, branch = "master") => {
   return buff.toString("utf-8");
 };
 
+const getPathContent = async (path, branch = "master") => {
+  const options = {
+    auth: getGithubAuth(),
+  };
+  const link = `${apiRepoLink}${apiContentPath
+    .replace("{branch}", encodeURIComponent(branch))
+    .replace("{path}", path)}`;
+  return (await axios.get(link, options)).data;
+};
+
 module.exports = {
   getLastCommitHash,
   getContentByPath,
+  getPathContent,
 };
