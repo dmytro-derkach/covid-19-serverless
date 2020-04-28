@@ -8,4 +8,6 @@ module.exports = {
   actualDataParserQueueUrl: process.env.ACTUAL_DATA_PARSER_QUEUE_URL,
   archiveDataParserQueueUrl: process.env.ARCHIVE_DATA_PARSER_QUEUE_URL,
   archiveSessionCreatorQueueUrl: process.env.ARCHIVE_SESSION_CREATOR_QUEUE_URL,
+  archiveDeltasCalculatorQueueUrl:
+    process.env.ARCHIVE_DELTAS_CALCULATOR_QUEUE_URL,
 };

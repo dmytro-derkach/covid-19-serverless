@@ -8,6 +8,7 @@ custom:
     ACTUAL_DATA_PARSER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-actual-data-parser"
     ARCHIVE_DATA_PARSER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-data-parser"
     ARCHIVE_SESSION_CREATOR_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-session-creator"
+    ARCHIVE_DELTAS_CALCULATOR_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-deltas-calculator"
 
 provider:
   name: aws
@@ -42,6 +43,12 @@ functions:
     events:
       - schedule: rate(1 minute)
 
+  archiveDeltasScheduler:
+    handler: handlers/archiveDeltasScheduler.handler
+    timeout: 30
+    events:
+      - schedule: rate(1 minute)
+
   actualDataParser:
       handler: handlers/actualDataParser.handler
       timeout: 30
@@ -66,5 +73,16 @@ functions:
     events:
       - sqs:
           arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-data-parser"
+          batchSize: 1
+          enabled: true
+
+  archiveDeltasCalculator:
+    handler: handlers/archiveDeltasCalculator.handler
+    timeout: 900
+    reservedConcurrency: 5
+    memorySize: 1024
+    events:
+      - sqs:
+          arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-deltas-calculator"
           batchSize: 1
           enabled: true

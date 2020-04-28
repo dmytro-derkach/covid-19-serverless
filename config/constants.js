@@ -6,5 +6,7 @@ module.exports = {
   ARCHIVE_CASES_PATH: "csse_covid_19_data/csse_covid_19_daily_reports",
   ARCHIVE_DATA_BRANCH: "master",
 
+  DATE_FORMAT: "MM-DD-YYYY",
+
   SSM_PATH: "/covid-19/prod",
 };

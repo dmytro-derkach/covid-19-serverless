@@ -10,6 +10,7 @@ const parserSessionSchema = new mongoose.Schema(
     type: { type: String, enum: sessionTypes, required: true },
     commitSHA: { type: String, required: true },
     isProcessed: { type: Boolean, default: false },
+    isProcessing: { type: Boolean, default: false },
   },
   { timestamps: true, versionKey: false }
 );
@@ -22,6 +23,14 @@ parserSessionSchema.statics = {
     return ParserSession.create({ type, commitSHA, isProcessed });
   },
 
+  getUnprocessedSessions(type) {
+    return ParserSession.find({
+      type,
+      isProcessed: false,
+      isProcessing: false,
+    });
+  },
+
   getDeprecatedSessions({ type }) {
     return ParserSession.find({ type }).sort({ createdAt: -1 }).skip(2).exec();
   },
@@ -31,7 +40,12 @@ parserSessionSchema.statics = {
   },
 };
 
-parserSessionSchema.methods = {};
+parserSessionSchema.methods = {
+  updateSession(session = {}) {
+    Object.assign(this, session);
+    return this.save();
+  },
+};
 
 const ParserSession = mongoose.model("ParserSession", parserSessionSchema);
 

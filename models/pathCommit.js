@@ -7,6 +7,7 @@ const pathCommitSchema = new mongoose.Schema(
     commitSHA: { type: String },
     isProcessed: { type: Boolean, default: false },
     rootCommits: [{ type: String }],
+    deltasCalculated: { type: Boolean, default: false },
   },
   { timestamps: true, versionKey: false }
 );
@@ -18,6 +19,13 @@ pathCommitSchema.statics = {
 
   getById(id) {
     return PathCommit.findById(id);
+  },
+
+  findByRootCommit(rootCommit, additionalCond = {}) {
+    return PathCommit.find({
+      rootCommits: rootCommit,
+      ...additionalCond,
+    });
   },
 
   async saveCommit({ path, branch, commitSHA, isProcessed, rootCommit }) {
@@ -47,11 +55,18 @@ pathCommitSchema.methods = {
     return this.save();
   },
 
+  removeRootCommit(rootCommit) {
+    const index = this.rootCommits.indexOf(rootCommit);
+    if (index > -1) {
+      this.rootCommits.splice(index, 1);
+    }
+  },
+
   removeCommit() {
     return this.remove();
   },
 
-  updateCommit(commit) {
+  updateCommit(commit = {}) {
     Object.assign(this, commit);
     return this.save();
   },

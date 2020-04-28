@@ -1,4 +1,5 @@
 const Path = require("path");
+const moment = require("moment");
 const {
   getLastCommitHash,
   getContentByPath,
@@ -10,6 +11,7 @@ const {
   ARCHIVE_CASES_PATH,
   ARCHIVE_DATA_BRANCH,
   ACTUAL_CASES_COUNTY_PATH,
+  DATE_FORMAT,
 } = require("@constants");
 const PathCommit = require("@models/pathCommit");
 const ParserSession = require("@models/parserSession");
@@ -24,8 +26,11 @@ const {
   actualDataParserQueueUrl,
   archiveDataParserQueueUrl,
   archiveSessionCreatorQueueUrl,
+  archiveDeltasCalculatorQueueUrl,
 } = require("@vars");
 const CSV = require("csv-string");
+
+const CONCURRENCY = 100;
 
 const checkAndStartActualSession = async () => {
   const commitSHA = await getLastCommitHash(
@@ -76,7 +81,7 @@ const parseAndSaveActualData = async (payload) => {
     commitSHA: payload.commitSHA,
     isProcessed: true,
   });
-  await removeDeprecatedData(ParserSession.ACTUAL_SESSION);
+  await removeUnusedActualData();
 };
 
 const processAllActualData = async (commitSHA) => {
@@ -145,11 +150,6 @@ const createArchiveSession = async (payload) => {
     ARCHIVE_CASES_PATH,
     ARCHIVE_DATA_BRANCH
   );
-  await ParserSession.createSession({
-    type: ParserSession.ARCHIVE_SESSION,
-    commitSHA: payload.commitSHA,
-    isProcessed: false,
-  });
   await PathCommit.saveCommit({
     commitSHA: payload.commitSHA,
     path: ARCHIVE_CASES_PATH,
@@ -169,6 +169,11 @@ const createArchiveSession = async (payload) => {
       updatedAt: createdDate,
     }));
   const savedCommits = await PathCommit.saveData(pathCommits);
+  await ParserSession.createSession({
+    type: ParserSession.ARCHIVE_SESSION,
+    commitSHA: payload.commitSHA,
+    isProcessed: false,
+  });
   await sendMessagesToSQS(
     archiveDataParserQueueUrl,
     savedCommits.map((el) => ({
@@ -200,7 +205,7 @@ const parseAndSaveArchiveData = async (payload) => {
 const processArchiveData = async (path, commitSHA) => {
   const data = await getContentByPath(path, ARCHIVE_DATA_BRANCH);
   const items = parseCSV(data);
-  const casesDate = Path.basename(path).slice(0, -4);
+  const casesDate = getDateByPath(path);
   let cases = [];
   let countryCases = {};
   let countries = [];
@@ -228,8 +233,8 @@ const processArchiveData = async (path, commitSHA) => {
       casesDate,
     };
     if (
-      payload.recovered < payload.confirmed &&
-      payload.deaths < payload.confirmed
+      payload.recovered <= payload.confirmed &&
+      payload.deaths <= payload.confirmed
     ) {
       payload.active = payload.confirmed - payload.deaths - payload.recovered;
       cases.push(payload);
@@ -269,10 +274,10 @@ const processArchiveData = async (path, commitSHA) => {
   return { summary, cases, countries };
 };
 
-const removeDeprecatedData = async (type) => {
+const removeUnusedActualData = async () => {
   const deprecatedData = (
     await ParserSession.getDeprecatedSessions({
-      type,
+      type: ParserSession.ACTUAL_SESSION,
     })
   ).map((el) => el.commitSHA);
   if (deprecatedData.length) {
@@ -281,6 +286,37 @@ const removeDeprecatedData = async (type) => {
     await ActualSummary.removeByCommits(deprecatedData);
     await ParserSession.removeByCommits(deprecatedData);
   }
+};
+
+const removeUnusedArchiveData = async () => {
+  const deprecatedData = (
+    await ParserSession.getDeprecatedSessions({
+      type: ParserSession.ARCHIVE_SESSION,
+    })
+  ).map((el) => el.commitSHA);
+  for (const commitSHA of deprecatedData) {
+    const commits = await PathCommit.findByRootCommit(commitSHA);
+    for (const commit of commits) {
+      commit.removeRootCommit(commitSHA);
+      if (commit.rootCommits.length) {
+        await commit.updateCommit();
+      } else {
+        await Promise.all([
+          ArchiveAll.removeByCommits([commit.commitSHA], {
+            casesDate: getDateByPath(commit.path),
+          }),
+          ArchiveCountries.removeByCommits([commit.commitSHA], {
+            casesDate: getDateByPath(commit.path),
+          }),
+          ArchiveSummary.removeByCommits([commit.commitSHA], {
+            casesDate: getDateByPath(commit.path),
+          }),
+          commit.removeCommit(),
+        ]);
+      }
+    }
+  }
+  await ParserSession.removeByCommits(deprecatedData);
 };
 
 const parseCSV = (csv) => {
@@ -304,7 +340,7 @@ const parseCSV = (csv) => {
       if (
         items[0][i]
           .toLowerCase()
-          .replace(/[\s_/]/, "")
+          .replace(/[\s_/]/g, "")
           .indexOf(header.toLowerCase()) !== -1
       ) {
         foundIndex = i;
@@ -339,10 +375,162 @@ const parseCSV = (csv) => {
   return results;
 };
 
+const checkAndCreateDeltaSession = async () => {
+  const sessions = await ParserSession.getUnprocessedSessions(
+    ParserSession.ARCHIVE_SESSION
+  );
+  for (const session of sessions) {
+    if (
+      (
+        await PathCommit.findByRootCommit(session.commitSHA, {
+          isProcessed: false,
+        })
+      ).length
+    ) {
+      continue;
+    }
+    const changedCommits = await PathCommit.findByRootCommit(
+      session.commitSHA,
+      {
+        deltasCalculated: false,
+      }
+    );
+    const changedCommitsIds = changedCommits.map((el) => el._id);
+    const messages = changedCommits.map((el) => ({
+      _id: el._id,
+      commitSHA: session.commitSHA,
+      changedCommits: changedCommitsIds,
+    }));
+    await session.updateSession({ isProcessing: true });
+    await sendMessagesToSQS(archiveDeltasCalculatorQueueUrl, messages);
+  }
+};
+
+const calculatePathDeltas = async (payload) => {
+  const { commitSHA, changedCommits } = payload;
+  const pathCommit = await PathCommit.getById(payload._id);
+
+  const calculateDeltas = async (
+    model,
+    cursor,
+    rootCommit,
+    pathCommit,
+    changedCommits = []
+  ) => {
+    const casesDate = getDateByPath(pathCommit.path);
+    const prevDate = moment(casesDate, DATE_FORMAT)
+      .subtract(1, "days")
+      .format(DATE_FORMAT);
+    const nextDate = moment(casesDate, DATE_FORMAT)
+      .add(1, "days")
+      .format(DATE_FORMAT);
+    const prevCommit =
+      (
+        await PathCommit.findByRootCommit(rootCommit, {
+          path: new RegExp(prevDate),
+        })
+      )[0] || {};
+    const nextCommit =
+      (
+        await PathCommit.findByRootCommit(rootCommit, {
+          path: new RegExp(nextDate),
+        })
+      )[0] || {};
+    await cursor.eachAsync(
+      async (el) => {
+        const initialDelta = {
+          confirmed: 0,
+          deaths: 0,
+          recovered: 0,
+          active: 0,
+          ...(
+            (await model
+              .findOneByCommit(prevCommit.commitSHA, {
+                city: el.city,
+                state: el.state,
+                country: el.country,
+                casesDate: prevDate,
+              })
+              .select("confirmed deaths recovered active -_id")) || {
+              toJSON: () => {},
+            }
+          ).toJSON(),
+        };
+        await el.updateData({
+          confirmed_delta: el.confirmed - initialDelta.confirmed,
+          deaths_delta: el.deaths - initialDelta.deaths,
+          recovered_delta: el.recovered - initialDelta.recovered,
+          active_delta: el.active - initialDelta.active,
+        });
+        if (
+          changedCommits.length &&
+          nextCommit.commitSHA &&
+          !changedCommits.find((el) => el === nextCommit._id.toString())
+        ) {
+          const data = model
+            .findOneByCommit(nextCommit.commitSHA, {
+              city: el.city,
+              state: el.state,
+              country: el.country,
+              casesDate: nextDate,
+            })
+            .cursor();
+          await calculateDeltas(model, data, rootCommit, nextCommit);
+        }
+      },
+      { parallel: CONCURRENCY }
+    );
+    await cursor.close();
+  };
+
+  const casesDate = getDateByPath(pathCommit.path);
+  const jobs = [
+    async () =>
+      await calculateDeltas(
+        ArchiveAll,
+        ArchiveAll.findDataByCommit(pathCommit.commitSHA, {
+          casesDate,
+        }).cursor(),
+        commitSHA,
+        pathCommit,
+        changedCommits
+      ),
+    async () =>
+      await calculateDeltas(
+        ArchiveCountries,
+        ArchiveCountries.findDataByCommit(pathCommit.commitSHA, {
+          casesDate,
+        }).cursor(),
+        commitSHA,
+        pathCommit,
+        changedCommits
+      ),
+    async () =>
+      await calculateDeltas(
+        ArchiveSummary,
+        ArchiveSummary.findDataByCommit(pathCommit.commitSHA, {
+          casesDate,
+        }).cursor(),
+        commitSHA,
+        pathCommit,
+        changedCommits
+      ),
+  ];
+  for (const job of jobs) {
+    await job();
+  }
+  await pathCommit.updateCommit({ deltasCalculated: true });
+};
+
+const getDateByPath = (path) => Path.basename(path).slice(0, -4);
+
 module.exports = {
   checkAndStartActualSession,
   parseAndSaveActualData,
   checkAndStartArchiveSession,
   createArchiveSession,
   parseAndSaveArchiveData,
+  removeUnusedArchiveData,
+  checkAndCreateDeltaSession,
+  calculatePathDeltas,
 };
