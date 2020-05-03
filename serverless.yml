@@ -9,6 +9,7 @@ custom:
     ARCHIVE_DATA_PARSER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-data-parser"
     ARCHIVE_SESSION_CREATOR_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-session-creator"
     ARCHIVE_DELTAS_CALCULATOR_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-deltas-calculator"
+    ARCHIVE_DELTAS_SESSION_MARKER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-deltas-session-marker"
 
 provider:
   name: aws
@@ -84,5 +85,15 @@ functions:
     events:
       - sqs:
           arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-deltas-calculator"
+          batchSize: 1
+          enabled: true
+
+  archiveDeltasSessionMarker:
+    handler: handlers/archiveDeltasSessionMarker.handler
+    timeout: 900
+    reservedConcurrency: 1
+    events:
+      - sqs:
+          arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-deltas-session-marker"
           batchSize: 1
           enabled: true

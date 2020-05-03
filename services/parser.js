@@ -27,6 +27,7 @@ const {
   archiveDataParserQueueUrl,
   archiveSessionCreatorQueueUrl,
   archiveDeltasCalculatorQueueUrl,
+  archiveDeltasSessionMarkerQueueUrl,
 } = require("@vars");
 const CSV = require("csv-string");
 
@@ -49,18 +50,27 @@ const checkAndStartActualSession = async () => {
 };
 
 const checkAndStartArchiveSession = async () => {
-  const commitSHA = await getLastCommitHash(
-    ARCHIVE_CASES_PATH,
-    ARCHIVE_DATA_BRANCH
-  );
   if (
-    !(await PathCommit.findDataByCommit({
-      path: ARCHIVE_CASES_PATH,
-      branch: ARCHIVE_DATA_BRANCH,
-      commitSHA,
-    }))
+    !(
+      await ParserSession.getUnprocessedSessions(
+        ParserSession.ARCHIVE_SESSION,
+        true
+      )
+    ).length
   ) {
-    await sendMessageToSQS(archiveSessionCreatorQueueUrl, { commitSHA });
+    const commitSHA = await getLastCommitHash(
+      ARCHIVE_CASES_PATH,
+      ARCHIVE_DATA_BRANCH
+    );
+    if (
+      !(await PathCommit.findDataByCommit({
+        path: ARCHIVE_CASES_PATH,
+        branch: ARCHIVE_DATA_BRANCH,
+        commitSHA,
+      }))
+    ) {
+      await sendMessageToSQS(archiveSessionCreatorQueueUrl, { commitSHA });
+    }
   }
 };
 
@@ -520,6 +530,25 @@ const calculatePathDeltas = async (payload) => {
     await job();
   }
   await pathCommit.updateCommit({ deltasCalculated: true });
+  await sendMessageToSQS(archiveDeltasSessionMarkerQueueUrl, { commitSHA });
+};
+
+const checkAndMarkArchiveSession = async (payload) => {
+  const { commitSHA } = payload;
+  if (
+    !(
+      await PathCommit.findByRootCommit(commitSHA, {
+        deltasCalculated: false,
+      })
+    ).length
+  ) {
+    const session = await ParserSession.getByCommitSHA(
+      commitSHA,
+      ParserSession.ARCHIVE_SESSION
+    );
+    await session.updateSession({ isProcessing: false, isProcessed: true });
+    await removeUnusedArchiveData();
+  }
 };
 
 const getDateByPath = (path) => Path.basename(path).slice(0, -4);
@@ -533,4 +562,5 @@ module.exports = {
   removeUnusedArchiveData,
   checkAndCreateDeltaSession,
   calculatePathDeltas,
+  checkAndMarkArchiveSession,
 };

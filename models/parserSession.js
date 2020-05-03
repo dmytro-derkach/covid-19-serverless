@@ -23,11 +23,11 @@ parserSessionSchema.statics = {
     return ParserSession.create({ type, commitSHA, isProcessed });
   },
 
-  getUnprocessedSessions(type) {
+  getUnprocessedSessions(type, includeIsProcessing = false) {
     return ParserSession.find({
       type,
       isProcessed: false,
-      isProcessing: false,
+      isProcessing: { $in: [false, includeIsProcessing] },
     });
   },
 
@@ -37,6 +37,13 @@ parserSessionSchema.statics = {
 
   removeByCommits(commits) {
     return ParserSession.deleteMany({ commitSHA: { $in: commits } });
+  },
+
+  getByCommitSHA(commitSHA, type) {
+    return ParserSession.findOne({
+      commitSHA,
+      type,
+    });
   },
 };
 

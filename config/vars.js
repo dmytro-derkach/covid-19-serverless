@@ -10,4 +10,6 @@ module.exports = {
   archiveSessionCreatorQueueUrl: process.env.ARCHIVE_SESSION_CREATOR_QUEUE_URL,
   archiveDeltasCalculatorQueueUrl:
     process.env.ARCHIVE_DELTAS_CALCULATOR_QUEUE_URL,
+  archiveDeltasSessionMarkerQueueUrl:
+    process.env.ARCHIVE_DELTAS_SESSION_MARKER_QUEUE_URL,
 };
