@@ -20,6 +20,10 @@ actualSummarySchema.statics = {
   removeByCommits(commits) {
     return ActualSummary.deleteMany({ commitSHA: { $in: commits } });
   },
+
+  findOneByCommit(commitSHA, additionalCond = {}) {
+    return ActualSummary.findOne({ commitSHA, ...additionalCond });
+  },
 };
 
 actualSummarySchema.methods = {};

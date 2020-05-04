@@ -9,12 +9,16 @@
   "license": "ISC",
   "dependencies": {
     "@middy/core": "^1.0.0-beta.8",
+    "@middy/http-error-handler": "^1.0.0",
+    "@middy/http-header-normalizer": "^1.0.0",
     "@middy/sqs-json-body-parser": "^1.0.0-beta.8",
     "@middy/ssm": "^1.0.0-beta.8",
     "@middy/validator": "^1.0.0-beta.8",
+    "@middy/warmup": "^1.0.0",
     "aws-sdk": "^2.656.0",
     "axios": "^0.19.2",
     "csv-string": "^3.2.0",
+    "http-errors": "^1.7.3",
     "module-alias": "^2.2.2",
     "moment": "^2.24.0",
     "mongoose": "^5.9.7"
@@ -32,7 +36,9 @@
     "eslint-plugin-prettier": "^3.1.2",
     "husky": "^4.2.3",
     "lint-staged": "^10.1.2",
-    "prettier": "^2.0.2"
+    "prettier": "^2.0.2",
+    "serverless-domain-manager": "^3.3.2",
+    "serverless-plugin-warmup": "^4.9.0"
   },
   "husky": {
     "hooks": {

@@ -1,6 +1,15 @@
 service: covid-19
 
+plugins:
+  - serverless-domain-manager
+  - serverless-plugin-warmup
+
 custom:
+  customDomain:
+    domainName: api.covid-19.derkachhub.com
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
   settings:
     ACCOUNT_ID: "338027781746"
     REGION: "eu-central-1"
@@ -30,6 +39,16 @@ provider:
         - "ssm:Get*"
         - "ssm:List*"
       Resource: "*"
+    - Effect: 'Allow'
+      Action:
+        - 'lambda:InvokeFunction'
+      Resource:
+        - Fn::Join:
+          - ':'
+          - - arn:aws:lambda
+            - Ref: AWS::Region
+            - Ref: AWS::AccountId
+            - function:${self:service}-${opt:stage, self:provider.stage}-*
 
 functions:
   actualScheduler:
@@ -97,3 +116,11 @@ functions:
           arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-deltas-session-marker"
           batchSize: 1
           enabled: true
+
+  getActualSummary:
+    handler: handlers/getActualSummary.handler
+    warmup: true
+    events:
+      - http:
+          path: actual/summary
+          method: get

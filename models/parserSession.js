@@ -31,6 +31,14 @@ parserSessionSchema.statics = {
     });
   },
 
+  getById(id) {
+    return ParserSession.findById(id);
+  },
+
+  getLastSession(type) {
+    return ParserSession.findOne({ type }).sort({ createdAt: -1 }).exec();
+  },
+
   getDeprecatedSessions({ type }) {
     return ParserSession.find({ type }).sort({ createdAt: -1 }).skip(2).exec();
   },
