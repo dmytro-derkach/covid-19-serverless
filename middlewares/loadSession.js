@@ -9,7 +9,10 @@ const loadSessionMiddleware = (type) => ({
       event: { headers = {} },
     } = handler;
     if (headers["session-id"]) {
-      if (!mongoose.Types.ObjectId.isValid(headers["session-id"])) {
+      if (
+        typeof headers["session-id"] === "number" ||
+        !mongoose.Types.ObjectId.isValid(headers["session-id"])
+      ) {
         throw new createError(400, "Bad session-id header!");
       }
       context.parserSession = await ParserSession.getById(

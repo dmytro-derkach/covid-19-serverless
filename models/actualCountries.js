@@ -20,6 +20,10 @@ actualCountriesSchema.statics = {
     return ActualCountries.insertMany(data);
   },
 
+  findAllByCommit(commitSHA) {
+    return ActualCountries.find({ commitSHA });
+  },
+
   removeByCommits(commits) {
     return ActualCountries.deleteMany({ commitSHA: { $in: commits } });
   },

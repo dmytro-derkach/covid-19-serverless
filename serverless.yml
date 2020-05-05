@@ -124,3 +124,14 @@ functions:
       - http:
           path: actual/summary
           method: get
+
+  getActualCountries:
+    handler: handlers/getActualCountries.handler
+    warmup: true
+    events:
+      - http:
+          path: actual/countries
+          method: get
+      - http:
+          path: actual/countries/{sortBy}
+          method: get
