@@ -6,8 +6,9 @@ const httpEventNormalizer = require("@middy/http-event-normalizer");
 const normalizedResponse = require("@middlewares/normalizedResponse");
 const warmup = require("@middlewares/warmup");
 const loadSession = require("@middlewares/loadSession");
-const validator = require("@validators/getActualCountries");
-const { getActualCountries } = require("@services/rest");
+const ParserSession = require("@models/parserSession");
+const validator = require("@validators/getArchiveMap");
+const { getArchiveMap } = require("@services/rest");
 
 const loadSSM = require("@middlewares/loadSSM");
 const connectDb = require("@middlewares/connectDb");
@@ -15,7 +16,7 @@ const connectDb = require("@middlewares/connectDb");
 const processHandler = async (event, context) => {
   return {
     statusCode: 200,
-    body: await getActualCountries(context, event),
+    body: await getArchiveMap(context, event),
   };
 };
 
@@ -26,7 +27,7 @@ const handler = middy(processHandler)
   .use(loadSSM())
   .use(connectDb())
   .use(httpHeaderNormalizer())
-  .use(loadSession())
+  .use(loadSession(ParserSession.ARCHIVE_SESSION))
   .use(httpErrorHandler({ logger: null }))
   .use(normalizedResponse());
 

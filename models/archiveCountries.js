@@ -37,6 +37,13 @@ archiveCountriesSchema.statics = {
     return ArchiveCountries.find({ commitSHA, ...additionalCond });
   },
 
+  findDataByCommits(commits, additionalCond = {}) {
+    return ArchiveCountries.find({
+      commitSHA: { $in: commits },
+      ...additionalCond,
+    });
+  },
+
   findOneByCommit(commitSHA, additionalCond = {}) {
     return ArchiveCountries.findOne({ commitSHA, ...additionalCond });
   },

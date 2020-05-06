@@ -6,8 +6,7 @@ const httpEventNormalizer = require("@middy/http-event-normalizer");
 const normalizedResponse = require("@middlewares/normalizedResponse");
 const warmup = require("@middlewares/warmup");
 const loadSession = require("@middlewares/loadSession");
-const validator = require("@validators/getActualCountries");
-const { getActualCountries } = require("@services/rest");
+const { getActualMap } = require("@services/rest");
 
 const loadSSM = require("@middlewares/loadSSM");
 const connectDb = require("@middlewares/connectDb");
@@ -15,14 +14,13 @@ const connectDb = require("@middlewares/connectDb");
 const processHandler = async (event, context) => {
   return {
     statusCode: 200,
-    body: await getActualCountries(context, event),
+    body: await getActualMap(context),
   };
 };
 
 const handler = middy(processHandler)
   .use(warmup())
   .use(httpEventNormalizer())
-  .use(validator())
   .use(loadSSM())
   .use(connectDb())
   .use(httpHeaderNormalizer())

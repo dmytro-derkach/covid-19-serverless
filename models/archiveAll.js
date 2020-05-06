@@ -41,6 +41,13 @@ archiveAllSchema.statics = {
     return ArchiveAll.find({ commitSHA, ...additionalCond });
   },
 
+  findDataByCommits(commits, additionalCond = {}) {
+    return ArchiveAll.find({
+      commitSHA: { $in: commits },
+      ...additionalCond,
+    });
+  },
+
   findOneByCommit(commitSHA, additionalCond = {}) {
     return ArchiveAll.findOne({ commitSHA, ...additionalCond });
   },

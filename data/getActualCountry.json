@@ -1,0 +1,7 @@
+{
+  "httpMethod": "GET",
+  "pathParameters": {
+    "countryName": "us",
+    "sortBy": "alphabetic"
+  }
+}

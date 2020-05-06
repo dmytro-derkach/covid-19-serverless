@@ -36,6 +36,13 @@ archiveSummarySchema.statics = {
     return ArchiveSummary.find({ commitSHA, ...additionalCond });
   },
 
+  findDataByCommits(commits, additionalCond = {}) {
+    return ArchiveSummary.find({
+      commitSHA: { $in: commits },
+      ...additionalCond,
+    });
+  },
+
   findOneByCommit(commitSHA, additionalCond = {}) {
     return ArchiveSummary.findOne({ commitSHA, ...additionalCond });
   },

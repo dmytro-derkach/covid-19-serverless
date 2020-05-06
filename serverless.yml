@@ -135,3 +135,49 @@ functions:
       - http:
           path: actual/countries/{sortBy}
           method: get
+
+  getActualCountry:
+    handler: handlers/getActualCountry.handler
+    warmup: true
+    events:
+      - http:
+          path: actual/country/{countryName}
+          method: get
+      - http:
+          path: actual/country/{countryName}/{sortBy}
+          method: get
+
+  getActualMap:
+    handler: handlers/getActualMap.handler
+    warmup: true
+    events:
+      - http:
+          path: actual/map
+          method: get
+
+  getArchiveSummary:
+    handler: handlers/getArchiveSummary.handler
+    warmup: true
+    events:
+      - http:
+          path: archive/summary
+          method: get
+
+  getArchiveCountry:
+    handler: handlers/getArchiveCountry.handler
+    warmup: true
+    events:
+      - http:
+          path: archive/country/{countryName}
+          method: get
+
+  getArchiveMap:
+    handler: handlers/getArchiveMap.handler
+    warmup: true
+    events:
+      - http:
+          path: archive/map/{countryName}/{stateName}
+          method: get
+      - http:
+          path: archive/map/{countryName}/{stateName}/{cityName}
+          method: get

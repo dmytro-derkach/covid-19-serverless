@@ -18,7 +18,7 @@ const loadSessionMiddleware = (type) => ({
       context.parserSession = await ParserSession.getById(
         headers["session-id"]
       );
-      if (!context.parserSession) {
+      if (!context.parserSession || context.parserSession.type !== type) {
         throw new createError(404, "Session not found!");
       }
     } else {
