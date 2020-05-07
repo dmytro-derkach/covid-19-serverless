@@ -35,8 +35,14 @@ parserSessionSchema.statics = {
     return ParserSession.findById(id);
   },
 
-  getLastSession(type) {
-    return ParserSession.findOne({ type }).sort({ createdAt: -1 }).exec();
+  getLastProcessedSession(type) {
+    return ParserSession.findOne({
+      type,
+      isProcessed: true,
+      isProcessing: false,
+    })
+      .sort({ createdAt: -1 })
+      .exec();
   },
 
   getDeprecatedSessions({ type }) {
