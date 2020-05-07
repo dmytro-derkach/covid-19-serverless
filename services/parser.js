@@ -242,37 +242,32 @@ const processArchiveData = async (path, commitSHA) => {
       commitSHA,
       casesDate,
     };
-    if (
-      payload.recovered <= payload.confirmed &&
-      payload.deaths <= payload.confirmed
-    ) {
-      payload.active = payload.confirmed - payload.deaths - payload.recovered;
-      cases.push(payload);
-      summary.confirmed += payload.confirmed;
-      summary.deaths += payload.deaths;
-      summary.recovered += payload.recovered;
-      summary.active += payload.active;
-      if (payload.country) {
-        if (!countryCases[payload.country]) {
-          countryCases[payload.country] = {
-            country: payload.country,
-            lastUpdate: payload.lastUpdate,
-            confirmed: payload.confirmed,
-            deaths: payload.deaths,
-            recovered: payload.recovered,
-            active: payload.active,
-            commitSHA,
-            casesDate,
-          };
-        } else {
-          const countryCase = countryCases[payload.country];
-          countryCase.confirmed += payload.confirmed;
-          countryCase.deaths += payload.deaths;
-          countryCase.recovered += payload.recovered;
-          countryCase.active += payload.active;
-          if (countryCase.lastUpdate.valueOf() < payload.lastUpdate.valueOf()) {
-            countryCase.lastUpdate = payload.lastUpdate;
-          }
+    payload.active = payload.confirmed - payload.deaths - payload.recovered;
+    cases.push(payload);
+    summary.confirmed += payload.confirmed;
+    summary.deaths += payload.deaths;
+    summary.recovered += payload.recovered;
+    summary.active += payload.active;
+    if (payload.country) {
+      if (!countryCases[payload.country]) {
+        countryCases[payload.country] = {
+          country: payload.country,
+          lastUpdate: payload.lastUpdate,
+          confirmed: payload.confirmed,
+          deaths: payload.deaths,
+          recovered: payload.recovered,
+          active: payload.active,
+          commitSHA,
+          casesDate,
+        };
+      } else {
+        const countryCase = countryCases[payload.country];
+        countryCase.confirmed += payload.confirmed;
+        countryCase.deaths += payload.deaths;
+        countryCase.recovered += payload.recovered;
+        countryCase.active += payload.active;
+        if (countryCase.lastUpdate.valueOf() < payload.lastUpdate.valueOf()) {
+          countryCase.lastUpdate = payload.lastUpdate;
         }
       }
     }
