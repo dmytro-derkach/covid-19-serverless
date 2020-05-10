@@ -2,8 +2,9 @@ const mongoose = require("mongoose");
 
 const ACTUAL_SESSION = "actual";
 const ARCHIVE_SESSION = "archive";
+const GEOLOCATION_SESSION = "geolocation";
 
-const sessionTypes = [ACTUAL_SESSION, ARCHIVE_SESSION];
+const sessionTypes = [ACTUAL_SESSION, ARCHIVE_SESSION, GEOLOCATION_SESSION];
 
 const parserSessionSchema = new mongoose.Schema(
   {
@@ -11,6 +12,7 @@ const parserSessionSchema = new mongoose.Schema(
     commitSHA: { type: String, required: true },
     isProcessed: { type: Boolean, default: false },
     isProcessing: { type: Boolean, default: false },
+    isUsing: { type: Boolean, default: false },
   },
   { timestamps: true, versionKey: false }
 );
@@ -18,6 +20,7 @@ const parserSessionSchema = new mongoose.Schema(
 parserSessionSchema.statics = {
   ACTUAL_SESSION,
   ARCHIVE_SESSION,
+  GEOLOCATION_SESSION,
 
   createSession({ type, commitSHA, isProcessed }) {
     return ParserSession.create({ type, commitSHA, isProcessed });
@@ -46,7 +49,10 @@ parserSessionSchema.statics = {
   },
 
   getDeprecatedSessions({ type }) {
-    return ParserSession.find({ type }).sort({ createdAt: -1 }).skip(2).exec();
+    return ParserSession.find({ type, isUsing: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .skip(2)
+      .exec();
   },
 
   removeByCommits(commits) {

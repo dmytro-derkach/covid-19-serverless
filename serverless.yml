@@ -19,6 +19,7 @@ custom:
     ARCHIVE_SESSION_CREATOR_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-session-creator"
     ARCHIVE_DELTAS_CALCULATOR_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-deltas-calculator"
     ARCHIVE_DELTAS_SESSION_MARKER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-archive-deltas-session-marker"
+    GEOLOCATION_DATA_PARSER_QUEUE_URL: "https://sqs.eu-central-1.amazonaws.com/338027781746/covid-19-geolocation-data-parser"
 
 provider:
   name: aws
@@ -63,6 +64,12 @@ functions:
     events:
       - schedule: rate(1 minute)
 
+  geolocationScheduler:
+    handler: handlers/geolocationScheduler.handler
+    timeout: 30
+    events:
+      - schedule: rate(1 minute)
+
   archiveDeltasScheduler:
     handler: handlers/archiveDeltasScheduler.handler
     timeout: 30
@@ -93,6 +100,15 @@ functions:
     events:
       - sqs:
           arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-archive-data-parser"
+          batchSize: 1
+          enabled: true
+
+  geolocationDataParser:
+    handler: handlers/geolocationDataParser.handler
+    timeout: 30
+    events:
+      - sqs:
+          arn: "arn:aws:sqs:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:covid-19-geolocation-data-parser"
           batchSize: 1
           enabled: true
 
@@ -180,4 +196,15 @@ functions:
           method: get
       - http:
           path: archive/map/{countryName}/{stateName}/{cityName}
+          method: get
+
+  getApiDoc:
+    handler: handlers/getApiDoc.handler
+    warmup: true
+    events:
+      - http:
+          path: /
+          method: get
+      - http:
+          path: /{proxy+}
           method: get

@@ -12,9 +12,12 @@ const {
   ARCHIVE_DATA_BRANCH,
   ACTUAL_CASES_COUNTY_PATH,
   DATE_FORMAT,
+  GEOLOCATION_TABLE_PATH,
+  GEOLOCATION_DATA_BRANCH,
 } = require("@constants");
 const PathCommit = require("@models/pathCommit");
 const ParserSession = require("@models/parserSession");
+const Geolocation = require("@models/geolocation");
 const ActualAll = require("@models/actualAll");
 const ActualCountries = require("@models/actualCountries");
 const ActualSummary = require("@models/actualSummary");
@@ -28,6 +31,7 @@ const {
   archiveSessionCreatorQueueUrl,
   archiveDeltasCalculatorQueueUrl,
   archiveDeltasSessionMarkerQueueUrl,
+  geolocationDataParserQueueUrl,
 } = require("@vars");
 const CSV = require("csv-string");
 
@@ -293,6 +297,17 @@ const removeUnusedActualData = async () => {
   }
 };
 
+const removeUnusedGeolocationData = async () => {
+  const deprecatedData = (
+    await ParserSession.getDeprecatedSessions({
+      type: ParserSession.GEOLOCATION_SESSION,
+    })
+  ).map((el) => el.commitSHA);
+  if (deprecatedData.length) {
+    await Geolocation.removeByCommits(deprecatedData);
+  }
+};
+
 const removeUnusedArchiveData = async () => {
   const deprecatedData = (
     await ParserSession.getDeprecatedSessions({
@@ -336,6 +351,7 @@ const parseCSV = (csv) => {
     "Confirmed",
     "Deaths",
     "Recovered",
+    "Population",
   ];
   const headerIndexes = [];
   const results = [];
@@ -374,6 +390,8 @@ const parseCSV = (csv) => {
       result.deaths = headerIndexes[7] > -1 ? items[i][headerIndexes[7]] : "";
       result.recovered =
         headerIndexes[8] > -1 ? items[i][headerIndexes[8]] : "";
+      result.population =
+        headerIndexes[9] > -1 ? items[i][headerIndexes[9]] : "";
       results.push(result);
     }
   }
@@ -546,6 +564,67 @@ const checkAndMarkArchiveSession = async (payload) => {
   }
 };
 
+const checkAndStartGeolocationSession = async () => {
+  const commitSHA = await getLastCommitHash(
+    GEOLOCATION_TABLE_PATH,
+    GEOLOCATION_DATA_BRANCH
+  );
+  if (
+    !(await PathCommit.findDataByCommit({
+      path: GEOLOCATION_TABLE_PATH,
+      branch: GEOLOCATION_DATA_BRANCH,
+      commitSHA,
+    }))
+  ) {
+    await sendMessageToSQS(geolocationDataParserQueueUrl, { commitSHA });
+  } else {
+    await removeUnusedGeolocationData();
+  }
+};
+
+const parseAndSaveGeolocationData = async (payload) => {
+  const geolocation = await processGeolocationData(payload.commitSHA);
+  await Geolocation.saveData(geolocation);
+  await PathCommit.saveCommit({
+    commitSHA: payload.commitSHA,
+    path: GEOLOCATION_TABLE_PATH,
+    branch: GEOLOCATION_DATA_BRANCH,
+    isProcessed: true,
+  });
+  await ParserSession.createSession({
+    type: ParserSession.GEOLOCATION_SESSION,
+    commitSHA: payload.commitSHA,
+    isProcessed: true,
+  });
+  await removeUnusedGeolocationData();
+};
+
+const processGeolocationData = async (commitSHA) => {
+  const data = await getContentByPath(
+    GEOLOCATION_TABLE_PATH,
+    GEOLOCATION_DATA_BRANCH
+  );
+  const items = parseCSV(data);
+  let geolocation = [];
+  for (let i = 0; i < items.length; i++) {
+    const element = items[i];
+    const payload = {
+      city: element.city,
+      state: element.state,
+      country: element.country,
+      lat: element.lat,
+      long: element.long,
+      population:
+        element.population && !isNaN(element.population)
+          ? Number(element.population)
+          : null,
+      commitSHA,
+    };
+    geolocation.push(payload);
+  }
+  return geolocation;
+};
+
 const getDateByPath = (path) => Path.basename(path).slice(0, -4);
 
 module.exports = {
@@ -558,4 +637,6 @@ module.exports = {
   checkAndCreateDeltaSession,
   calculatePathDeltas,
   checkAndMarkArchiveSession,
+  checkAndStartGeolocationSession,
+  parseAndSaveGeolocationData,
 };
