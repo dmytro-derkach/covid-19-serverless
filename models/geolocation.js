@@ -36,6 +36,11 @@ geolocationSchema.statics = {
             },
           },
         },
+        {
+          $match: {
+            commitSHA,
+          },
+        },
         { $limit: 1 },
         {
           $project: {
