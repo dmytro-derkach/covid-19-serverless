@@ -4,6 +4,8 @@ const archiveCountriesSchema = new mongoose.Schema(
   {
     country: { type: String },
     lastUpdate: { type: Date },
+    lat: { type: String },
+    long: { type: String },
     confirmed: { type: Number },
     deaths: { type: Number },
     recovered: { type: Number },

@@ -12,8 +12,9 @@ const inputSchema = {
             type: "object",
             properties: {
               _id: { type: "string" },
+              geolocationCommitSHA: { type: "string" },
             },
-            required: ["_id"],
+            required: ["_id", "geolocationCommitSHA"],
           },
         },
         required: ["body"],

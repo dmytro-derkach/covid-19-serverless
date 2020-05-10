@@ -26,6 +26,10 @@ parserSessionSchema.statics = {
     return ParserSession.create({ type, commitSHA, isProcessed });
   },
 
+  markAsUnused(type) {
+    return ParserSession.updateOne({ type }, { $set: { isUsing: false } });
+  },
+
   getUnprocessedSessions(type, includeIsProcessing = false) {
     return ParserSession.find({
       type,

@@ -19,8 +19,37 @@ geolocationSchema.statics = {
     return Geolocation.insertMany(data);
   },
 
-  findAllByCommit(commitSHA, additionalCond = {}) {
-    return Geolocation.find({ commitSHA, ...additionalCond });
+  async findOneByCommit(commitSHA, additionalCond = {}) {
+    return (
+      await Geolocation.aggregate([
+        {
+          $search: {
+            compound: {
+              should: Object.keys(additionalCond)
+                .filter((key) => !!additionalCond[key])
+                .map((key) => ({
+                  search: {
+                    query: additionalCond[key],
+                    path: key,
+                  },
+                })),
+            },
+          },
+        },
+        { $limit: 1 },
+        {
+          $project: {
+            _id: 0,
+            country: 1,
+            state: 1,
+            city: 1,
+            lat: 1,
+            long: 1,
+            score: { $meta: "searchScore" },
+          },
+        },
+      ]).exec()
+    )[0];
   },
 
   removeByCommits(commits) {

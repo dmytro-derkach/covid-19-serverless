@@ -160,45 +160,53 @@ const processActualDataByCountries = async (commitSHA) => {
 };
 
 const createArchiveSession = async (payload) => {
-  const pathContent = await getPathContent(
-    ARCHIVE_CASES_PATH,
-    ARCHIVE_DATA_BRANCH
+  const geolocationSession = await ParserSession.getLastProcessedSession(
+    ParserSession.GEOLOCATION_SESSION
   );
-  await PathCommit.saveCommit({
-    commitSHA: payload.commitSHA,
-    path: ARCHIVE_CASES_PATH,
-    branch: ARCHIVE_DATA_BRANCH,
-    isProcessed: true,
-  });
-  const createdDate = new Date();
-  const pathCommits = pathContent
-    .filter((el) => el.name.indexOf(".csv") !== -1)
-    .map((el) => ({
-      commitSHA: "",
-      path: el.path,
+  if (geolocationSession) {
+    await geolocationSession.updateSession({ isUsing: true });
+    const pathContent = await getPathContent(
+      ARCHIVE_CASES_PATH,
+      ARCHIVE_DATA_BRANCH
+    );
+    await PathCommit.saveCommit({
+      commitSHA: payload.commitSHA,
+      path: ARCHIVE_CASES_PATH,
       branch: ARCHIVE_DATA_BRANCH,
+      isProcessed: true,
+    });
+    const createdDate = new Date();
+    const pathCommits = pathContent
+      .filter((el) => el.name.indexOf(".csv") !== -1)
+      .map((el) => ({
+        commitSHA: "",
+        path: el.path,
+        branch: ARCHIVE_DATA_BRANCH,
+        isProcessed: false,
+        rootCommits: [payload.commitSHA],
+        createdAt: createdDate,
+        updatedAt: createdDate,
+      }));
+    const savedCommits = await PathCommit.saveData(pathCommits);
+    await ParserSession.createSession({
+      type: ParserSession.ARCHIVE_SESSION,
+      commitSHA: payload.commitSHA,
       isProcessed: false,
-      rootCommits: [payload.commitSHA],
-      createdAt: createdDate,
-      updatedAt: createdDate,
-    }));
-  const savedCommits = await PathCommit.saveData(pathCommits);
-  await ParserSession.createSession({
-    type: ParserSession.ARCHIVE_SESSION,
-    commitSHA: payload.commitSHA,
-    isProcessed: false,
-  });
-  await sendMessagesToSQS(
-    archiveDataParserQueueUrl,
-    savedCommits.map((el) => ({
-      _id: el._id,
-    }))
-  );
+    });
+    await sendMessagesToSQS(
+      archiveDataParserQueueUrl,
+      savedCommits.map((el) => ({
+        _id: el._id,
+        geolocationCommitSHA: geolocationSession.commitSHA,
+      }))
+    );
+  }
 };
 
 const parseAndSaveArchiveData = async (payload) => {
   const pathCommit = await PathCommit.getById(payload._id);
   const commitSHA = await getLastCommitHash(pathCommit.path, pathCommit.branch);
+  const { geolocationCommitSHA } = payload;
   const commit = await PathCommit.findDataByCommit({
     path: pathCommit.path,
     branch: pathCommit.branch,
@@ -208,7 +216,11 @@ const parseAndSaveArchiveData = async (payload) => {
     await commit.appendRootCommit(pathCommit.rootCommits[0]);
     await pathCommit.removeCommit();
   } else {
-    const archiveData = await processArchiveData(pathCommit.path, commitSHA);
+    const archiveData = await processArchiveData(
+      pathCommit.path,
+      commitSHA,
+      geolocationCommitSHA
+    );
     await ArchiveAll.saveData(archiveData.cases);
     await ArchiveCountries.saveData(archiveData.countries);
     await ArchiveSummary.saveData(archiveData.summary);
@@ -216,7 +228,7 @@ const parseAndSaveArchiveData = async (payload) => {
   }
 };
 
-const processArchiveData = async (path, commitSHA) => {
+const processArchiveData = async (path, commitSHA, geolocationCommitSHA) => {
   const data = await getContentByPath(path, ARCHIVE_DATA_BRANCH);
   const items = parseCSV(data);
   const casesDate = getDateByPath(path);
@@ -252,8 +264,32 @@ const processArchiveData = async (path, commitSHA) => {
     summary.deaths += payload.deaths;
     summary.recovered += payload.recovered;
     summary.active += payload.active;
+    if (!payload.lat || !payload.long) {
+      const geo = await Geolocation.findOneByCommit(geolocationCommitSHA, {
+        city: payload.city,
+        state: payload.state,
+        country: payload.country,
+      });
+      if (geo) {
+        payload.lat = geo.lat;
+        payload.long = geo.long;
+      }
+    }
     if (payload.country) {
       if (!countryCases[payload.country]) {
+        const coord = { lat: "", long: "" };
+        if (!payload.state && !payload.city) {
+          coord.lat = payload.lat;
+          coord.long = payload.long;
+        } else {
+          const geo = await Geolocation.findOneByCommit(geolocationCommitSHA, {
+            country: payload.country,
+          });
+          if (geo) {
+            coord.lat = geo.lat;
+            coord.long = geo.long;
+          }
+        }
         countryCases[payload.country] = {
           country: payload.country,
           lastUpdate: payload.lastUpdate,
@@ -261,6 +297,8 @@ const processArchiveData = async (path, commitSHA) => {
           deaths: payload.deaths,
           recovered: payload.recovered,
           active: payload.active,
+          lat: coord.lat,
+          long: coord.long,
           commitSHA,
           casesDate,
         };
@@ -425,6 +463,7 @@ const checkAndCreateDeltaSession = async () => {
       changedCommits: changedCommitsIds,
     }));
     await session.updateSession({ isProcessing: true });
+    await ParserSession.markAsUnused(ParserSession.GEOLOCATION_SESSION);
     await sendMessagesToSQS(archiveDeltasCalculatorQueueUrl, messages);
   }
 };
