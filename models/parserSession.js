@@ -27,7 +27,10 @@ parserSessionSchema.statics = {
   },
 
   markAsUnused(type) {
-    return ParserSession.updateOne({ type }, { $set: { isUsing: false } });
+    return ParserSession.updateOne(
+      { type, isUsing: true },
+      { $set: { isUsing: false } }
+    );
   },
 
   getUnprocessedSessions(type, includeIsProcessing = false) {
