@@ -13,5 +13,5 @@ module.exports = {
   archiveDeltasSessionMarkerQueueUrl:
     process.env.ARCHIVE_DELTAS_SESSION_MARKER_QUEUE_URL,
   geolocationDataParserQueueUrl: process.env.GEOLOCATION_DATA_PARSER_QUEUE_URL,
-  env: process.env.env,
+  env: process.env.ENV,
 };

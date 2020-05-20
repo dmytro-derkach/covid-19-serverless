@@ -331,7 +331,10 @@ const removeUnusedActualData = async () => {
     await ActualAll.removeByCommits(deprecatedData);
     await ActualCountries.removeByCommits(deprecatedData);
     await ActualSummary.removeByCommits(deprecatedData);
-    await ParserSession.removeByCommits(deprecatedData);
+    await ParserSession.removeByCommits(
+      deprecatedData,
+      ParserSession.ACTUAL_SESSION
+    );
   }
 };
 
@@ -343,6 +346,10 @@ const removeUnusedGeolocationData = async () => {
   ).map((el) => el.commitSHA);
   if (deprecatedData.length) {
     await Geolocation.removeByCommits(deprecatedData);
+    await ParserSession.removeByCommits(
+      deprecatedData,
+      ParserSession.GEOLOCATION_SESSION
+    );
   }
 };
 
@@ -374,7 +381,10 @@ const removeUnusedArchiveData = async () => {
       }
     }
   }
-  await ParserSession.removeByCommits(deprecatedData);
+  await ParserSession.removeByCommits(
+    deprecatedData,
+    ParserSession.ARCHIVE_SESSION
+  );
 };
 
 const parseCSV = (csv) => {

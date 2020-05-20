@@ -5,6 +5,7 @@
   "scripts": {
     "start:sqs": "docker run -p 9324:9324 softwaremill/elasticmq",
     "dev": "npm run start:sqs & pm2 start \"sls offline\" --name 'lambda' --attach --watch",
+    "deploy": "sls deploy --config=\"prod-serverless.yml\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Dmytro Derkach",

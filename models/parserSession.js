@@ -62,8 +62,8 @@ parserSessionSchema.statics = {
       .exec();
   },
 
-  removeByCommits(commits) {
-    return ParserSession.deleteMany({ commitSHA: { $in: commits } });
+  removeByCommits(commits, type = ParserSession.ACTUAL_SESSION) {
+    return ParserSession.deleteMany({ commitSHA: { $in: commits }, type });
   },
 
   getByCommitSHA(commitSHA, type) {
