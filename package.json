@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
+    "start:sqs": "docker run -p 9324:9324 softwaremill/elasticmq",
+    "dev": "npm run start:sqs & pm2 start \"sls offline\" --name 'lambda' --attach --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Dmytro Derkach",
@@ -30,6 +32,7 @@
     ]
   },
   "devDependencies": {
+    "@dmytro.derkach/serverless-offline-sqs": "^4.0.0",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.1",
     "eslint-import-resolver-alias": "^1.1.2",
@@ -37,8 +40,10 @@
     "eslint-plugin-prettier": "^3.1.2",
     "husky": "^4.2.3",
     "lint-staged": "^10.1.2",
+    "pm2": "^4.4.0",
     "prettier": "^2.0.2",
     "serverless-domain-manager": "^3.3.2",
+    "serverless-offline": "^6.1.5",
     "serverless-plugin-warmup": "^4.9.0"
   },
   "husky": {

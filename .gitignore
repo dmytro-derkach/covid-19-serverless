@@ -9,3 +9,6 @@ node_modules
 
 # database dump directory
 dump
+
+# local serverless.yml
+serverless.yml

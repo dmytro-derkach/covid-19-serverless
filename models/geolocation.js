@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { env } = require("@vars");
 
 const geolocationSchema = new mongoose.Schema(
   {
@@ -20,41 +21,41 @@ geolocationSchema.statics = {
   },
 
   async findOneByCommit(commitSHA, additionalCond = {}) {
-    return (
-      await Geolocation.aggregate([
-        {
-          $search: {
-            compound: {
-              should: Object.keys(additionalCond)
-                .filter((key) => !!additionalCond[key])
-                .map((key) => ({
-                  search: {
-                    query: additionalCond[key],
-                    path: key,
-                  },
-                })),
+    return (env === "local"
+      ? null
+      : await Geolocation.aggregate([
+          {
+            $search: {
+              compound: {
+                should: Object.keys(additionalCond)
+                  .filter((key) => !!additionalCond[key])
+                  .map((key) => ({
+                    search: {
+                      query: additionalCond[key],
+                      path: key,
+                    },
+                  })),
+              },
             },
           },
-        },
-        {
-          $match: {
-            commitSHA,
+          {
+            $match: {
+              commitSHA,
+            },
           },
-        },
-        { $limit: 1 },
-        {
-          $project: {
-            _id: 0,
-            country: 1,
-            state: 1,
-            city: 1,
-            lat: 1,
-            long: 1,
-            score: { $meta: "searchScore" },
+          { $limit: 1 },
+          {
+            $project: {
+              _id: 0,
+              country: 1,
+              state: 1,
+              city: 1,
+              lat: 1,
+              long: 1,
+              score: { $meta: "searchScore" },
+            },
           },
-        },
-      ]).exec()
-    )[0];
+        ]).exec())[0];
   },
 
   removeByCommits(commits) {

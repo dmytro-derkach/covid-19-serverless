@@ -1,4 +1,4 @@
-const getDbUrl = () => process.env.APP_MONGODB_URI;
+const getDbUrl = () => process.env.MONGODB_URI || process.env.APP_MONGODB_URI;
 const getGithubAuth = () => JSON.parse(process.env.APP_GITHUB_AUTH);
 
 module.exports = {
@@ -13,4 +13,5 @@ module.exports = {
   archiveDeltasSessionMarkerQueueUrl:
     process.env.ARCHIVE_DELTAS_SESSION_MARKER_QUEUE_URL,
   geolocationDataParserQueueUrl: process.env.GEOLOCATION_DATA_PARSER_QUEUE_URL,
+  env: process.env.env,
 };

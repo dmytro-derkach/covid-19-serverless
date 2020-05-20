@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { getDbUrl, databaseName } = require("@vars");
+const { getDbUrl, databaseName, env } = require("@vars");
 
 const log = (shouldLog, message) => (shouldLog ? console.log(message) : null);
 
@@ -38,5 +38,5 @@ const connectDbMiddleware = ({
 
 module.exports = () =>
   connectDbMiddleware({
-    shouldClose: true,
+    shouldClose: env !== "local",
   });
