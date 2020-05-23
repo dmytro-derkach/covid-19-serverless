@@ -26,6 +26,13 @@ actualAllSchema.statics = {
     return ActualAll.find({ commitSHA, ...additionalCond });
   },
 
+  findDataByCommits(commits, additionalCond = {}) {
+    return ActualAll.find({
+      commitSHA: { $in: commits },
+      ...additionalCond,
+    });
+  },
+
   removeByCommits(commits) {
     return ActualAll.deleteMany({ commitSHA: { $in: commits } });
   },

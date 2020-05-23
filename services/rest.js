@@ -34,6 +34,10 @@ const getActualCountries = async (context, event) => {
 
 const getActualCountry = async (context, event) => {
   const { parserSession } = context;
+  const commits = (
+    await PathCommit.findByRootCommit(parserSession.commitSHA)
+  ).map((el) => el.commitSHA);
+  commits.push(parserSession.commitSHA);
   let {
     pathParameters: { countryName, sortBy = "confirmed" },
   } = event;
@@ -48,7 +52,7 @@ const getActualCountry = async (context, event) => {
       [sortBy]: -1,
     };
   }
-  return await ActualAll.findAllByCommit(parserSession.commitSHA, {
+  return await ActualAll.findDataByCommits(commits, {
     country: countryName,
   })
     .sort(sortBy)

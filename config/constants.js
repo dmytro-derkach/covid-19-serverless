@@ -8,6 +8,10 @@ module.exports = {
   GEOLOCATION_TABLE_PATH: "csse_covid_19_data/UID_ISO_FIPS_LookUp_Table.csv",
   GEOLOCATION_DATA_BRANCH: "master",
 
+  ACTUAL_UKRAINE_CASES_PATH: "cases.csv",
+  ACTUAL_UKRAINE_DATA_BRANCH: "master",
+  UKRAINE_REPOSITORY: "dmytro-derkach/covid-19-ukraine",
+
   DATE_FORMAT: "MM-DD-YYYY",
 
   SSM_PATH: "/covid-19/prod",

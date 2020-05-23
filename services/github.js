@@ -2,25 +2,35 @@ const { GITHUB_REPOSITORY } = require("@constants");
 const { getGithubAuth } = require("@vars");
 const axios = require("axios");
 
-const apiRepoLink = `https://api.github.com/repos/${GITHUB_REPOSITORY}`;
+const apiRepoLink = "https://api.github.com/repos/";
 const apiCommitHashPath = "/commits?path={path}&sha={branch}&per_page=1";
 const apiContentPath = "/contents/{path}?ref={branch}";
 
-const getLastCommitHash = async (path, branch = "master") => {
+const getLastCommitHash = async (
+  path,
+  branch = "master",
+  repository = GITHUB_REPOSITORY
+) => {
   const options = {
     auth: getGithubAuth(),
   };
-  const link = `${apiRepoLink}${apiCommitHashPath
+  const apiLink = `${apiRepoLink}${repository}`;
+  const link = `${apiLink}${apiCommitHashPath
     .replace("{branch}", encodeURIComponent(branch))
     .replace("{path}", encodeURIComponent(path))}`;
   return (await axios.get(link, options)).data[0].sha;
 };
 
-const getContentByPath = async (path, branch = "master") => {
+const getContentByPath = async (
+  path,
+  branch = "master",
+  repository = GITHUB_REPOSITORY
+) => {
   const options = {
     auth: getGithubAuth(),
   };
-  const link = `${apiRepoLink}${apiContentPath
+  const apiLink = `${apiRepoLink}${repository}`;
+  const link = `${apiLink}${apiContentPath
     .replace("{branch}", encodeURIComponent(branch))
     .replace("{path}", path)}`;
   const response = await axios.get(link, options);
@@ -28,11 +38,16 @@ const getContentByPath = async (path, branch = "master") => {
   return buff.toString("utf-8");
 };
 
-const getPathContent = async (path, branch = "master") => {
+const getPathContent = async (
+  path,
+  branch = "master",
+  repository = GITHUB_REPOSITORY
+) => {
   const options = {
     auth: getGithubAuth(),
   };
-  const link = `${apiRepoLink}${apiContentPath
+  const apiLink = `${apiRepoLink}${repository}`;
+  const link = `${apiLink}${apiContentPath
     .replace("{branch}", encodeURIComponent(branch))
     .replace("{path}", path)}`;
   return (await axios.get(link, options)).data;

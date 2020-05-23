@@ -26,6 +26,12 @@ const ArchiveCountries = require("@models/archiveCountries");
 const ArchiveSummary = require("@models/archiveSummary");
 const { sendMessageToSQS, sendMessagesToSQS } = require("@services/queue");
 const {
+  processActualDataByUkraine,
+  saveActualDataByUkraine,
+  removeUnusedActualUkraineData,
+} = require("@services/ukraine");
+const { parseCSV } = require("@services/csv");
+const {
   actualDataParserQueueUrl,
   archiveDataParserQueueUrl,
   archiveSessionCreatorQueueUrl,
@@ -33,7 +39,6 @@ const {
   archiveDeltasSessionMarkerQueueUrl,
   geolocationDataParserQueueUrl,
 } = require("@vars");
-const CSV = require("csv-string");
 
 const CONCURRENCY = 100;
 
@@ -81,9 +86,11 @@ const checkAndStartArchiveSession = async () => {
 const parseAndSaveActualData = async (payload) => {
   const actualAll = await processAllActualData(payload.commitSHA);
   const actualCountries = await processActualDataByCountries(payload.commitSHA);
+  const actualUkraine = await processActualDataByUkraine(payload.commitSHA);
   await ActualAll.saveData(actualAll);
   await ActualCountries.saveData(actualCountries.cases);
   await ActualSummary.saveData(actualCountries.summary);
+  await saveActualDataByUkraine(actualUkraine);
   await PathCommit.saveCommit({
     commitSHA: payload.commitSHA,
     path: ACTUAL_CASES_PATH,
@@ -331,6 +338,7 @@ const removeUnusedActualData = async () => {
     await ActualAll.removeByCommits(deprecatedData);
     await ActualCountries.removeByCommits(deprecatedData);
     await ActualSummary.removeByCommits(deprecatedData);
+    await removeUnusedActualUkraineData(deprecatedData);
     await ParserSession.removeByCommits(
       deprecatedData,
       ParserSession.ACTUAL_SESSION
@@ -385,65 +393,6 @@ const removeUnusedArchiveData = async () => {
     deprecatedData,
     ParserSession.ARCHIVE_SESSION
   );
-};
-
-const parseCSV = (csv) => {
-  const items = CSV.parse(csv);
-  const headers = [
-    "Admin2",
-    "ProvinceState",
-    "CountryRegion",
-    "LastUpdate",
-    "Lat",
-    "Long",
-    "Confirmed",
-    "Deaths",
-    "Recovered",
-    "Population",
-  ];
-  const headerIndexes = [];
-  const results = [];
-  for (const header of headers) {
-    let foundIndex = -1;
-    for (let i = 0; i < items[0].length; i++) {
-      if (
-        items[0][i]
-          .toLowerCase()
-          .replace(/[\s_/]/g, "")
-          .indexOf(header.toLowerCase()) !== -1
-      ) {
-        foundIndex = i;
-        break;
-      }
-    }
-    headerIndexes.push(foundIndex);
-  }
-  for (let i = 1; i < items.length; i++) {
-    if (items[i]) {
-      const result = {};
-      result.city = headerIndexes[0] > -1 ? items[i][headerIndexes[0]] : "";
-      result.state = headerIndexes[1] > -1 ? items[i][headerIndexes[1]] : "";
-      result.country =
-        headerIndexes[2] > -1
-          ? items[i][headerIndexes[2]].replace("Mainland China", "China")
-          : "";
-      result.lastUpdate =
-        headerIndexes[3] > -1
-          ? items[i][headerIndexes[3]].replace("T", " ")
-          : "";
-      result.lat = headerIndexes[4] > -1 ? items[i][headerIndexes[4]] : "";
-      result.long = headerIndexes[5] > -1 ? items[i][headerIndexes[5]] : "";
-      result.confirmed =
-        headerIndexes[6] > -1 ? items[i][headerIndexes[6]] : "";
-      result.deaths = headerIndexes[7] > -1 ? items[i][headerIndexes[7]] : "";
-      result.recovered =
-        headerIndexes[8] > -1 ? items[i][headerIndexes[8]] : "";
-      result.population =
-        headerIndexes[9] > -1 ? items[i][headerIndexes[9]] : "";
-      results.push(result);
-    }
-  }
-  return results;
 };
 
 const checkAndCreateDeltaSession = async () => {
