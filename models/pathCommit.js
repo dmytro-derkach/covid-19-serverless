@@ -70,6 +70,10 @@ pathCommitSchema.methods = {
     Object.assign(this, commit);
     return this.save();
   },
+
+  getLastRootCommit() {
+    return this.rootCommits[this.rootCommits.length - 1];
+  },
 };
 
 const PathCommit = mongoose.model("PathCommit", pathCommitSchema);

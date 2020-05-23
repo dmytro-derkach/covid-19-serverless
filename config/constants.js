@@ -9,7 +9,9 @@ module.exports = {
   GEOLOCATION_DATA_BRANCH: "master",
 
   ACTUAL_UKRAINE_CASES_PATH: "cases.csv",
+  ARCHIVE_UKRAINE_CASES_PATH: "daily_reports",
   ACTUAL_UKRAINE_DATA_BRANCH: "master",
+  ARCHIVE_UKRAINE_DATA_BRANCH: "master",
   UKRAINE_REPOSITORY: "dmytro-derkach/covid-19-ukraine",
 
   DATE_FORMAT: "MM-DD-YYYY",

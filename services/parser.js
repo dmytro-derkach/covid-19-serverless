@@ -1,4 +1,3 @@
-const Path = require("path");
 const moment = require("moment");
 const {
   getLastCommitHash,
@@ -29,6 +28,9 @@ const {
   processActualDataByUkraine,
   saveActualDataByUkraine,
   removeUnusedActualUkraineData,
+  processArchiveUkraineData,
+  saveArchiveDataByUkraine,
+  updateArchiveUkraineRootCommit,
 } = require("@services/ukraine");
 const { parseCSV } = require("@services/csv");
 const {
@@ -39,6 +41,7 @@ const {
   archiveDeltasSessionMarkerQueueUrl,
   geolocationDataParserQueueUrl,
 } = require("@vars");
+const { getDateByPath } = require("@services/utils");
 
 const CONCURRENCY = 100;
 
@@ -221,6 +224,7 @@ const parseAndSaveArchiveData = async (payload) => {
   });
   if (commit) {
     await commit.appendRootCommit(pathCommit.rootCommits[0]);
+    await updateArchiveUkraineRootCommit(pathCommit);
     await pathCommit.removeCommit();
   } else {
     const archiveData = await processArchiveData(
@@ -228,9 +232,11 @@ const parseAndSaveArchiveData = async (payload) => {
       commitSHA,
       geolocationCommitSHA
     );
+    const archiveUkraine = await processArchiveUkraineData(pathCommit);
     await ArchiveAll.saveData(archiveData.cases);
     await ArchiveCountries.saveData(archiveData.countries);
     await ArchiveSummary.saveData(archiveData.summary);
+    await saveArchiveDataByUkraine(archiveUkraine);
     await pathCommit.updateCommit({ isProcessed: true, commitSHA });
   }
 };
@@ -622,8 +628,6 @@ const processGeolocationData = async (commitSHA) => {
   }
   return geolocation;
 };
-
-const getDateByPath = (path) => Path.basename(path).slice(0, -4);
 
 module.exports = {
   checkAndStartActualSession,

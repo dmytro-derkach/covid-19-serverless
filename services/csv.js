@@ -13,6 +13,10 @@ const parseCSV = (csv) => {
     "Deaths",
     "Recovered",
     "Population",
+    "ConfirmedDelta",
+    "DeathsDelta",
+    "RecoveredDelta",
+    "ActiveDelta",
   ];
   const headerIndexes = [];
   const results = [];
@@ -53,6 +57,14 @@ const parseCSV = (csv) => {
         headerIndexes[8] > -1 ? items[i][headerIndexes[8]] : "";
       result.population =
         headerIndexes[9] > -1 ? items[i][headerIndexes[9]] : "";
+      result.confirmedDelta =
+        headerIndexes[10] > -1 ? items[i][headerIndexes[10]] : "";
+      result.deathsDelta =
+        headerIndexes[11] > -1 ? items[i][headerIndexes[11]] : "";
+      result.recoveredDelta =
+        headerIndexes[12] > -1 ? items[i][headerIndexes[12]] : "";
+      result.activeDelta =
+        headerIndexes[13] > -1 ? items[i][headerIndexes[13]] : "";
       results.push(result);
     }
   }
