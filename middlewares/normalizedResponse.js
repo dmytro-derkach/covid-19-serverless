@@ -4,7 +4,10 @@ const normalizedResponse = () => {
       const { body, headers, ...other } = handler.response;
       handler.response = {
         body: JSON.stringify(body),
-        headers: { ...headers, "Content-Type": "application/json" },
+        headers: {
+          ...headers,
+          "Content-Type": "application/json; charset=utf-8",
+        },
         ...other,
       };
       next();
