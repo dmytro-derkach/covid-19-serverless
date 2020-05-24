@@ -151,7 +151,7 @@ const processArchiveUkraineData = async (payload) => {
   };
 };
 
-const saveArchiveDataByUkraine = async (payload) => {
+const saveArchiveDataByUkraine = async (payload, archiveCommitSHA) => {
   const { commitSHA, casesDate, casesPath } = payload;
   if (commitSHA) {
     let { ukrainePath } = payload;
@@ -165,7 +165,7 @@ const saveArchiveDataByUkraine = async (payload) => {
       ukrainePath.isProcessed = true;
     }
     await ukrainePath.appendRootCommit(payload.path.getLastRootCommit());
-    await ArchiveAll.findDataByCommit(payload.path.commitSHA, {
+    await ArchiveAll.findDataByCommit(archiveCommitSHA, {
       country: "Ukraine",
       casesDate,
     })

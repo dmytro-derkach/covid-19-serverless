@@ -236,7 +236,7 @@ const parseAndSaveArchiveData = async (payload) => {
     await ArchiveAll.saveData(archiveData.cases);
     await ArchiveCountries.saveData(archiveData.countries);
     await ArchiveSummary.saveData(archiveData.summary);
-    await saveArchiveDataByUkraine(archiveUkraine);
+    await saveArchiveDataByUkraine(archiveUkraine, commitSHA);
     await pathCommit.updateCommit({ isProcessed: true, commitSHA });
   }
 };
