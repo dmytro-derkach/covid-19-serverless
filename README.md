@@ -1,5 +1,5 @@
 # covid-19-serverless
-This is example of COVID-19 api on serverless framework for AWS lambda
+This is an example of COVID-19 api on serverless framework for AWS lambda
 
 Api endpoint: [https://api.covid-19.derkachhub.com/](https://api.covid-19.derkachhub.com/)
 
