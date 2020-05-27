@@ -1,5 +1,5 @@
 # covid-19-serverless
-This is an example of COVID-19 api on serverless framework for AWS lambda (data collected from JHU [https://github.com/CSSEGISandData/COVID-19](https://github.com/CSSEGISandData/COVID-19))
+This is an example of COVID-19 api on serverless framework for AWS lambda (data collected from JHU [https://github.com/CSSEGISandData/COVID-19](https://github.com/CSSEGISandData/COVID-19) and [https://github.com/dmytro-derkach/covid-19-ukraine](https://github.com/dmytro-derkach/covid-19-ukraine))
 
 Api endpoint: [https://api.covid-19.derkachhub.com/](https://api.covid-19.derkachhub.com/)
 
