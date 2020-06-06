@@ -13,6 +13,7 @@ module.exports = {
   ACTUAL_UKRAINE_DATA_BRANCH: "master",
   ARCHIVE_UKRAINE_DATA_BRANCH: "master",
   UKRAINE_REPOSITORY: "dmytro-derkach/covid-19-ukraine",
+  MAX_UKRAINE_DATE: "05-31-2020",
 
   DATE_FORMAT: "MM-DD-YYYY",
 

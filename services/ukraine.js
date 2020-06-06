@@ -4,6 +4,8 @@ const {
   ACTUAL_UKRAINE_DATA_BRANCH,
   ARCHIVE_UKRAINE_DATA_BRANCH,
   UKRAINE_REPOSITORY,
+  DATE_FORMAT,
+  MAX_UKRAINE_DATE,
 } = require("@constants");
 const PathCommit = require("@models/pathCommit");
 const ActualAll = require("@models/actualAll");
@@ -11,69 +13,75 @@ const ArchiveAll = require("@models/archiveAll");
 const { getLastCommitHash, getContentByPath } = require("@services/github");
 const { parseCSV } = require("@services/csv");
 const { getDateByPath } = require("@services/utils");
+const moment = require("moment");
 
 const processActualDataByUkraine = async (commitSHA) => {
-  const ukraineCommitSHA =
-    (await getLastCommitHash(
-      ACTUAL_UKRAINE_CASES_PATH,
-      ACTUAL_UKRAINE_DATA_BRANCH,
-      UKRAINE_REPOSITORY
-    )) + "-Ukraine";
-  let ukrainePath = await PathCommit.findDataByCommit({
-    path: ACTUAL_UKRAINE_CASES_PATH,
-    branch: ACTUAL_UKRAINE_DATA_BRANCH,
-    commitSHA: ukraineCommitSHA,
-  });
-  let cases = [];
-  if (!ukrainePath) {
-    const data = await getContentByPath(
-      ACTUAL_UKRAINE_CASES_PATH,
-      ACTUAL_UKRAINE_DATA_BRANCH,
-      UKRAINE_REPOSITORY
-    );
-    const items = parseCSV(data);
-    for (let i = 0; i < items.length; i++) {
-      const element = items[i];
-      const payload = {
-        city: element.city,
-        state: element.state,
-        country: element.country,
-        lastUpdate: new Date(`${element.lastUpdate}+00`),
-        lat: element.lat,
-        long: element.long,
-        confirmed: Number(element.confirmed),
-        deaths: Number(element.deaths),
-        recovered: Number(element.recovered),
-        commitSHA: ukraineCommitSHA,
-      };
-      payload.active = payload.confirmed - payload.deaths - payload.recovered;
-      cases.push(payload);
+  const maxDate = moment(MAX_UKRAINE_DATE, DATE_FORMAT);
+  if (moment() < maxDate.add(1, "days")) {
+    const ukraineCommitSHA =
+      (await getLastCommitHash(
+        ACTUAL_UKRAINE_CASES_PATH,
+        ACTUAL_UKRAINE_DATA_BRANCH,
+        UKRAINE_REPOSITORY
+      )) + "-Ukraine";
+    let ukrainePath = await PathCommit.findDataByCommit({
+      path: ACTUAL_UKRAINE_CASES_PATH,
+      branch: ACTUAL_UKRAINE_DATA_BRANCH,
+      commitSHA: ukraineCommitSHA,
+    });
+    let cases = [];
+    if (!ukrainePath) {
+      const data = await getContentByPath(
+        ACTUAL_UKRAINE_CASES_PATH,
+        ACTUAL_UKRAINE_DATA_BRANCH,
+        UKRAINE_REPOSITORY
+      );
+      const items = parseCSV(data);
+      for (let i = 0; i < items.length; i++) {
+        const element = items[i];
+        const payload = {
+          city: element.city,
+          state: element.state,
+          country: element.country,
+          lastUpdate: new Date(`${element.lastUpdate}+00`),
+          lat: element.lat,
+          long: element.long,
+          confirmed: Number(element.confirmed),
+          deaths: Number(element.deaths),
+          recovered: Number(element.recovered),
+          commitSHA: ukraineCommitSHA,
+        };
+        payload.active = payload.confirmed - payload.deaths - payload.recovered;
+        cases.push(payload);
+      }
     }
+    return {
+      cases,
+      commitSHA: ukraineCommitSHA,
+      ukrainePath,
+      rootCommitSHA: commitSHA,
+    };
   }
-  return {
-    cases,
-    commitSHA: ukraineCommitSHA,
-    ukrainePath,
-    rootCommitSHA: commitSHA,
-  };
 };
 
-const saveActualDataByUkraine = async (payload) => {
+const saveActualDataByUkraine = async (payload = {}) => {
   let { ukrainePath, commitSHA, cases } = payload;
-  if (!ukrainePath) {
-    await ActualAll.saveData(cases);
-    ukrainePath = new PathCommit();
-    ukrainePath.path = ACTUAL_UKRAINE_CASES_PATH;
-    ukrainePath.branch = ACTUAL_UKRAINE_DATA_BRANCH;
-    ukrainePath.commitSHA = commitSHA;
-    ukrainePath.isProcessed = true;
+  if (commitSHA) {
+    if (!ukrainePath) {
+      await ActualAll.saveData(cases);
+      ukrainePath = new PathCommit();
+      ukrainePath.path = ACTUAL_UKRAINE_CASES_PATH;
+      ukrainePath.branch = ACTUAL_UKRAINE_DATA_BRANCH;
+      ukrainePath.commitSHA = commitSHA;
+      ukrainePath.isProcessed = true;
+    }
+    await ukrainePath.appendRootCommit(payload.rootCommitSHA);
+    await ActualAll.findAllByCommit(payload.rootCommitSHA, {
+      country: "Ukraine",
+    })
+      .remove()
+      .exec();
   }
-  await ukrainePath.appendRootCommit(payload.rootCommitSHA);
-  await ActualAll.findAllByCommit(payload.rootCommitSHA, {
-    country: "Ukraine",
-  })
-    .remove()
-    .exec();
 };
 
 const removeUnusedActualUkraineData = async (deprecatedData) => {
@@ -95,63 +103,67 @@ const removeUnusedActualUkraineData = async (deprecatedData) => {
 
 const processArchiveUkraineData = async (payload) => {
   const casesDate = getDateByPath(payload.path);
-  const casesPath = `${ARCHIVE_UKRAINE_CASES_PATH}/${casesDate}.csv`;
-  let ukraineCommitSHA = await getLastCommitHash(
-    casesPath,
-    ARCHIVE_UKRAINE_DATA_BRANCH,
-    UKRAINE_REPOSITORY
-  );
-  let cases = [];
-  let ukrainePath;
-  if (ukraineCommitSHA) {
-    ukraineCommitSHA += "-Ukraine";
-    ukrainePath = await PathCommit.findDataByCommit({
-      path: casesPath,
-      branch: ARCHIVE_UKRAINE_DATA_BRANCH,
-      commitSHA: ukraineCommitSHA,
-    });
-    if (!ukrainePath) {
-      const data = await getContentByPath(
-        casesPath,
-        ARCHIVE_UKRAINE_DATA_BRANCH,
-        UKRAINE_REPOSITORY
-      );
-      const items = parseCSV(data);
-      for (let i = 0; i < items.length; i++) {
-        const element = items[i];
-        const payload = {
-          city: element.city,
-          state: element.state,
-          country: element.country,
-          lastUpdate: new Date(`${element.lastUpdate}+00`),
-          lat: element.lat,
-          long: element.long,
-          confirmed: Number(element.confirmed),
-          deaths: Number(element.deaths),
-          recovered: Number(element.recovered),
-          commitSHA: ukraineCommitSHA,
-          casesDate,
-          confirmed_delta: Number(element.confirmedDelta),
-          deaths_delta: Number(element.deathsDelta),
-          recovered_delta: Number(element.recoveredDelta),
-          active_delta: Number(element.activeDelta),
-        };
-        payload.active = payload.confirmed - payload.deaths - payload.recovered;
-        cases.push(payload);
+  const maxDate = moment(MAX_UKRAINE_DATE, DATE_FORMAT);
+  if (moment(casesDate, DATE_FORMAT) <= maxDate) {
+    const casesPath = `${ARCHIVE_UKRAINE_CASES_PATH}/${casesDate}.csv`;
+    let ukraineCommitSHA = await getLastCommitHash(
+      casesPath,
+      ARCHIVE_UKRAINE_DATA_BRANCH,
+      UKRAINE_REPOSITORY
+    );
+    let cases = [];
+    let ukrainePath;
+    if (ukraineCommitSHA) {
+      ukraineCommitSHA += "-Ukraine";
+      ukrainePath = await PathCommit.findDataByCommit({
+        path: casesPath,
+        branch: ARCHIVE_UKRAINE_DATA_BRANCH,
+        commitSHA: ukraineCommitSHA,
+      });
+      if (!ukrainePath) {
+        const data = await getContentByPath(
+          casesPath,
+          ARCHIVE_UKRAINE_DATA_BRANCH,
+          UKRAINE_REPOSITORY
+        );
+        const items = parseCSV(data);
+        for (let i = 0; i < items.length; i++) {
+          const element = items[i];
+          const payload = {
+            city: element.city,
+            state: element.state,
+            country: element.country,
+            lastUpdate: new Date(`${element.lastUpdate}+00`),
+            lat: element.lat,
+            long: element.long,
+            confirmed: Number(element.confirmed),
+            deaths: Number(element.deaths),
+            recovered: Number(element.recovered),
+            commitSHA: ukraineCommitSHA,
+            casesDate,
+            confirmed_delta: Number(element.confirmedDelta),
+            deaths_delta: Number(element.deathsDelta),
+            recovered_delta: Number(element.recoveredDelta),
+            active_delta: Number(element.activeDelta),
+          };
+          payload.active =
+            payload.confirmed - payload.deaths - payload.recovered;
+          cases.push(payload);
+        }
       }
     }
+    return {
+      cases,
+      commitSHA: ukraineCommitSHA,
+      ukrainePath,
+      path: payload,
+      casesDate,
+      casesPath,
+    };
   }
-  return {
-    cases,
-    commitSHA: ukraineCommitSHA,
-    ukrainePath,
-    path: payload,
-    casesDate,
-    casesPath,
-  };
 };
 
-const saveArchiveDataByUkraine = async (payload, archiveCommitSHA) => {
+const saveArchiveDataByUkraine = async (payload = {}, archiveCommitSHA) => {
   const { commitSHA, casesDate, casesPath } = payload;
   if (commitSHA) {
     let { ukrainePath } = payload;
