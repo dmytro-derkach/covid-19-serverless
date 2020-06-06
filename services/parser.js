@@ -457,13 +457,13 @@ const calculatePathDeltas = async (payload) => {
     const prevCommit =
       (
         await PathCommit.findByRootCommit(rootCommit, {
-          path: pathCommit.path.slice(0, -14) + prevDate,
+          path: `${pathCommit.path.slice(0, -14)}${prevDate}.csv`,
         })
       )[0] || {};
     const nextCommit =
       (
         await PathCommit.findByRootCommit(rootCommit, {
-          path: pathCommit.path.slice(0, -14) + nextDate,
+          path: `${pathCommit.path.slice(0, -14)}${nextDate}.csv`,
         })
       )[0] || {};
     await cursor.eachAsync(
