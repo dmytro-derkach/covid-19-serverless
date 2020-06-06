@@ -63,6 +63,9 @@ const checkAndStartActualSession = async () => {
 
 const checkAndStartArchiveSession = async () => {
   if (
+    (await ParserSession.getLastProcessedSession(
+      ParserSession.GEOLOCATION_SESSION
+    )) &&
     !(
       await ParserSession.getUnprocessedSessions(
         ParserSession.ARCHIVE_SESSION,
@@ -454,13 +457,13 @@ const calculatePathDeltas = async (payload) => {
     const prevCommit =
       (
         await PathCommit.findByRootCommit(rootCommit, {
-          path: new RegExp(prevDate),
+          path: pathCommit.path.slice(0, -14) + prevDate,
         })
       )[0] || {};
     const nextCommit =
       (
         await PathCommit.findByRootCommit(rootCommit, {
-          path: new RegExp(nextDate),
+          path: pathCommit.path.slice(0, -14) + nextDate,
         })
       )[0] || {};
     await cursor.eachAsync(
