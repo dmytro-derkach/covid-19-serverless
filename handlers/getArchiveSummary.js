@@ -1,5 +1,6 @@
 require("module-alias/register");
 const middy = require("@middy/core");
+const cors = require("@middy/http-cors");
 const httpErrorHandler = require("@middy/http-error-handler");
 const httpHeaderNormalizer = require("@middy/http-header-normalizer");
 const httpEventNormalizer = require("@middy/http-event-normalizer");
@@ -27,6 +28,7 @@ const handler = middy(processHandler)
   .use(httpHeaderNormalizer())
   .use(loadSession(ParserSession.ARCHIVE_SESSION))
   .use(httpErrorHandler({ logger: null }))
-  .use(normalizedResponse());
+  .use(normalizedResponse())
+  .use(cors());
 
 module.exports = { handler };
