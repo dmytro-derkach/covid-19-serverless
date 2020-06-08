@@ -131,8 +131,22 @@ test("Test headers", async (done) => {
       "application/json; charset=utf-8"
     );
     expect(response.headers).toHaveProperty("Access-Control-Allow-Origin");
+    done();
+  });
+});
+
+describe("db tests", () => {
+  beforeAll(async (done) => {
     await prepareDb();
-    handler(event, {}, (err, response) => {
+    done();
+  });
+
+  test("Test headers", async (done) => {
+    const event = {
+      httpMethod: "GET",
+    };
+
+    handler(event, {}, async (err, response) => {
       if (err) return done(err);
       expect(response.headers).toHaveProperty(
         "Content-Type",
@@ -142,24 +156,12 @@ test("Test headers", async (done) => {
       done();
     });
   });
-});
 
-test("Test normal db response", async (done) => {
-  const event = {
-    httpMethod: "GET",
-  };
-
-  handler(event, {}, (err, response) => {
-    if (err) return done(err);
-    const body = JSON.parse(response.body);
-    expect(body).toEqual([
-      omit(lastCountries[1], "commitSHA"),
-      omit(lastCountries[0], "commitSHA"),
-    ]);
+  test("Test normal db response", async (done) => {
     const event = {
       httpMethod: "GET",
-      headers: { "session-id": lastSessionId },
     };
+
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
@@ -167,43 +169,40 @@ test("Test normal db response", async (done) => {
         omit(lastCountries[1], "commitSHA"),
         omit(lastCountries[0], "commitSHA"),
       ]);
-      done();
+      const event = {
+        httpMethod: "GET",
+        headers: { "session-id": lastSessionId },
+      };
+      handler(event, {}, (err, response) => {
+        if (err) return done(err);
+        const body = JSON.parse(response.body);
+        expect(body).toEqual([
+          omit(lastCountries[1], "commitSHA"),
+          omit(lastCountries[0], "commitSHA"),
+        ]);
+        done();
+      });
     });
   });
-});
 
-test("Test sort response", async (done) => {
-  const event = {
-    httpMethod: "GET",
-    pathParameters: { sortBy: "deaths" },
-  };
-
-  handler(event, {}, (err, response) => {
-    if (err) return done(err);
-    const body = JSON.parse(response.body);
-    expect(body).toEqual([
-      omit(lastCountries[0], "commitSHA"),
-      omit(lastCountries[1], "commitSHA"),
-    ]);
-
+  test("Test sort response", async (done) => {
     const event = {
       httpMethod: "GET",
-      headers: { "session-id": lastSessionId },
-      pathParameters: { sortBy: "recovered" },
+      pathParameters: { sortBy: "deaths" },
     };
 
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
       expect(body).toEqual([
-        omit(lastCountries[1], "commitSHA"),
         omit(lastCountries[0], "commitSHA"),
+        omit(lastCountries[1], "commitSHA"),
       ]);
 
       const event = {
         httpMethod: "GET",
         headers: { "session-id": lastSessionId },
-        pathParameters: { sortBy: "alphabetic" },
+        pathParameters: { sortBy: "recovered" },
       };
 
       handler(event, {}, (err, response) => {
@@ -217,77 +216,90 @@ test("Test sort response", async (done) => {
         const event = {
           httpMethod: "GET",
           headers: { "session-id": lastSessionId },
-          pathParameters: { sortBy: "wrong" },
+          pathParameters: { sortBy: "alphabetic" },
         };
 
         handler(event, {}, (err, response) => {
           if (err) return done(err);
           const body = JSON.parse(response.body);
-          expect(body).toHaveProperty("statusCode", 400);
-          done();
+          expect(body).toEqual([
+            omit(lastCountries[1], "commitSHA"),
+            omit(lastCountries[0], "commitSHA"),
+          ]);
+
+          const event = {
+            httpMethod: "GET",
+            headers: { "session-id": lastSessionId },
+            pathParameters: { sortBy: "wrong" },
+          };
+
+          handler(event, {}, (err, response) => {
+            if (err) return done(err);
+            const body = JSON.parse(response.body);
+            expect(body).toHaveProperty("statusCode", 400);
+            done();
+          });
         });
       });
     });
   });
-});
 
-test("Test prev session response", async (done) => {
-  const event = {
-    httpMethod: "GET",
-    headers: { "session-id": sessionId },
-  };
+  test("Test prev session response", async (done) => {
+    const event = {
+      httpMethod: "GET",
+      headers: { "session-id": sessionId },
+    };
 
-  handler(event, {}, (err, response) => {
-    if (err) return done(err);
-    const body = JSON.parse(response.body);
-    expect(body).toEqual([
-      omit(prevCountries[0], "commitSHA"),
-      omit(prevCountries[1], "commitSHA"),
-    ]);
-    done();
+    handler(event, {}, (err, response) => {
+      if (err) return done(err);
+      const body = JSON.parse(response.body);
+      expect(body).toEqual([
+        omit(prevCountries[0], "commitSHA"),
+        omit(prevCountries[1], "commitSHA"),
+      ]);
+      done();
+    });
   });
-});
 
-test("Test bad session response", async (done) => {
-  await prepareDb();
+  test("Test bad session response", async (done) => {
+    const event = {
+      httpMethod: "GET",
+      headers: { "Session-id": "test" },
+    };
 
-  const event = {
-    httpMethod: "GET",
-    headers: { "Session-id": "test" },
-  };
-
-  handler(event, {}, (err, response) => {
-    if (err) return done(err);
-    const body = JSON.parse(response.body);
-    expect(body).toHaveProperty("statusCode", 400);
-    done();
+    handler(event, {}, (err, response) => {
+      if (err) return done(err);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty("statusCode", 400);
+      done();
+    });
   });
-});
 
-test("Test not exists session response", async (done) => {
-  const event = {
-    httpMethod: "GET",
-    headers: { "Session-Id": new mongoose.Types.ObjectId().toString() },
-  };
+  test("Test not exists session response", async (done) => {
+    const event = {
+      httpMethod: "GET",
+      headers: { "Session-Id": new mongoose.Types.ObjectId().toString() },
+    };
 
-  handler(event, {}, (err, response) => {
-    if (err) return done(err);
-    const body = JSON.parse(response.body);
-    expect(body).toHaveProperty("statusCode", 404);
-    done();
+    handler(event, {}, (err, response) => {
+      if (err) return done(err);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty("statusCode", 404);
+      done();
+    });
   });
-});
 
-test("Test archive session response", async (done) => {
-  const event = {
-    httpMethod: "GET",
-    headers: { "Session-Id": archiveSessionId },
-  };
+  test("Test archive session response", async (done) => {
+    const event = {
+      httpMethod: "GET",
+      headers: { "Session-Id": archiveSessionId },
+    };
 
-  handler(event, {}, (err, response) => {
-    if (err) return done(err);
-    const body = JSON.parse(response.body);
-    expect(body).toHaveProperty("statusCode", 404);
-    done();
+    handler(event, {}, (err, response) => {
+      if (err) return done(err);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty("statusCode", 404);
+      done();
+    });
   });
 });
