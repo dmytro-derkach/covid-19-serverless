@@ -1,3 +1,5 @@
+const { env } = require("@vars");
+
 const normalizedResponse = () => {
   return {
     after: (handler, next) => {
@@ -32,7 +34,9 @@ const normalizedResponse = () => {
           statusCode: 500,
         };
       }
-      console.error(error);
+      if (env !== "test") {
+        console.error(error);
+      }
     },
   };
 };

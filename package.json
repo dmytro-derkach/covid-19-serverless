@@ -6,7 +6,7 @@
     "start:sqs": "docker run -p 9324:9324 softwaremill/elasticmq",
     "dev": "npm run start:sqs & pm2 start \"sls offline\" --name 'lambda' --attach --watch",
     "deploy": "sls deploy --config=\"prod-serverless.yml\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "sls invoke test"
   },
   "author": "Dmytro Derkach",
   "license": "ISC",
@@ -40,12 +40,15 @@
     "eslint-config-prettier": "^6.10.1",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-plugin-import": "^2.20.2",
+    "eslint-plugin-jest": "^23.13.2",
     "eslint-plugin-prettier": "^3.1.2",
     "husky": "^4.2.3",
+    "jest": "^26.0.1",
     "lint-staged": "^10.1.2",
     "pm2": "^4.4.0",
     "prettier": "^2.0.2",
     "serverless-domain-manager": "^3.3.2",
+    "serverless-jest-plugin": "^0.3.0",
     "serverless-offline": "^6.1.5",
     "serverless-plugin-warmup": "^4.9.0"
   },
@@ -62,5 +65,16 @@
     "@validators": "./validators",
     "@middlewares": "./middlewares",
     "@services": "./services"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@vars$": "<rootDir>/config/vars.js",
+      "^@constants$": "<rootDir>/config/constants.js",
+      "^@models(.*)$": "<rootDir>/models$1",
+      "^@validators(.*)$": "<rootDir>/validators$1",
+      "^@middlewares(.*)$": "<rootDir>/middlewares$1",
+      "^@services(.*)$": "<rootDir>/services$1"
+    }
   }
 }

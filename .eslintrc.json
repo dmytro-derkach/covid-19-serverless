@@ -4,7 +4,7 @@
         "es6": true,
         "node": true
     },
-    "extends": ["eslint:recommended", "plugin:prettier/recommended", "plugin:import/errors", "plugin:import/warnings"],
+    "extends": ["eslint:recommended", "plugin:prettier/recommended", "plugin:import/errors", "plugin:import/warnings", "plugin:jest/recommended"],
     "globals": {
         "Atomics": "readonly",
         "SharedArrayBuffer": "readonly"
@@ -20,7 +20,8 @@
         "import/named": 2,
         "import/namespace": 2,
         "import/default": 2,
-        "import/export": 2
+        "import/export": 2,
+        "no-async-promise-executor": "off"
     },
     "settings": {
         "import/resolver": {

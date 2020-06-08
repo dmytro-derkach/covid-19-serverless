@@ -19,7 +19,7 @@ const connectDbMiddleware = ({
     dbName: databaseName,
   },
   shouldClose = false,
-  shouldLog = true,
+  shouldLog = env !== "test",
 }) => ({
   before: async () => {
     if (mongoose.connection.readyState === 1) {
