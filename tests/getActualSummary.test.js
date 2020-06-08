@@ -1,46 +1,43 @@
 process.env.ENV = "test";
-process.env.MONGODB_URI = "mongodb://localhost:27017/test";
-process.env.DATABASE_NAME = "test";
+require("./mockSSM");
+const {
+  connectDatabase,
+  disconnectDatabase,
+  dropDatabase,
+} = require("./mockDb");
+const omit = require("lodash.omit");
 const mongoose = require("mongoose");
-const middy = require("@middy/core");
-const cors = require("@middy/http-cors");
-const httpErrorHandler = require("@middy/http-error-handler");
-const httpHeaderNormalizer = require("@middy/http-header-normalizer");
-const normalizedResponse = require("@middlewares/normalizedResponse");
-const loadSession = require("@middlewares/loadSession");
-const connectDb = require("@middlewares/connectDb");
-const { processHandler } = require("../handlers/getActualSummary");
 const ParserSession = require("@models/parserSession");
 const ActualSummary = require("@models/actualSummary");
+const { handler } = require("../handlers/getActualSummary");
 
-let sessionId;
+let sessionId, lastSessionId, archiveSessionId;
+const summaries = [
+  {
+    confirmed: 1,
+    deaths: 2,
+    recovered: 3,
+    active: 4,
+    affectedCountries: 5,
+    commitSHA: "test",
+  },
+  {
+    confirmed: 6,
+    deaths: 7,
+    recovered: 8,
+    active: 9,
+    affectedCountries: 10,
+    commitSHA: "test1",
+  },
+];
 
-const handler = middy(processHandler)
-  .use(connectDb())
-  .use(httpHeaderNormalizer())
-  .use(loadSession())
-  .use(httpErrorHandler({ logger: null }))
-  .use(normalizedResponse())
-  .use(cors());
+beforeAll(async (done) => {
+  await dropDatabase();
+  done();
+});
 
-const connectDatabase = async () => {
-  await mongoose.connect(process.env.MONGODB_URI, {
-    useCreateIndex: true,
-    useFindAndModify: false,
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    dbName: process.env.DATABASE_NAME,
-  });
-};
-
-const disconnectDatabase = async () => {
-  await mongoose.connection.close();
-};
-
-afterEach(async (done) => {
-  await connectDatabase();
-  await mongoose.connection.db.dropDatabase();
-  await disconnectDatabase();
+afterAll(async (done) => {
+  await dropDatabase();
   done();
 });
 
@@ -55,124 +52,142 @@ const prepareDb = async () => {
       isUsing: false,
     })
   )._id;
-  await ActualSummary.create({
-    confirmed: 1,
-    deaths: 2,
-    recovered: 3,
-    active: 4,
-    affectedCountries: 5,
-    commitSHA: "test",
-  });
+  lastSessionId = (
+    await ParserSession.create({
+      type: ParserSession.ACTUAL_SESSION,
+      commitSHA: "test1",
+      isProcessed: true,
+      isProcessing: false,
+      isUsing: false,
+    })
+  )._id;
+  archiveSessionId = (
+    await ParserSession.create({
+      type: ParserSession.ARCHIVE_SESSION,
+      commitSHA: "test2",
+      isProcessed: true,
+      isProcessing: false,
+      isUsing: false,
+    })
+  )._id;
+  await ActualSummary.insertMany(summaries);
   await disconnectDatabase();
 };
 
-test("Test clean db response", () => {
-  return new Promise((done, reject) => {
-    const event = {
-      httpMethod: "GET",
-    };
+test("Test clean db response", async (done) => {
+  const event = {
+    httpMethod: "GET",
+  };
 
-    handler(event, {}, (err, response) => {
-      if (err) return reject(err);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty("statusCode", 404);
-      done();
-    });
+  handler(event, {}, (err, response) => {
+    if (err) return done(err);
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty("statusCode", 404);
+    done();
   });
 });
 
-test("Test normal db response", () => {
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (done, reject) => {
+test("Test headers", async (done) => {
+  const event = {
+    httpMethod: "GET",
+  };
+
+  handler(event, {}, async (err, response) => {
+    if (err) return done(err);
+    expect(response.headers).toHaveProperty(
+      "Content-Type",
+      "application/json; charset=utf-8"
+    );
+    expect(response.headers).toHaveProperty("Access-Control-Allow-Origin");
     await prepareDb();
-
-    const event = {
-      httpMethod: "GET",
-    };
-
     handler(event, {}, (err, response) => {
-      if (err) return reject(err);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty("confirmed", 1);
-      expect(body).toHaveProperty("deaths", 2);
-      expect(body).toHaveProperty("recovered", 3);
-      expect(body).toHaveProperty("active", 4);
-      expect(body).toHaveProperty("affectedCountries", 5);
-      done();
-    });
-  });
-});
-
-test("Test exists session response", () => {
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (done, reject) => {
-    await prepareDb();
-
-    const event = {
-      httpMethod: "GET",
-      headers: { "session-id": sessionId },
-    };
-
-    handler(event, {}, (err, response) => {
-      if (err) return reject(err);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty("confirmed", 1);
-      expect(body).toHaveProperty("deaths", 2);
-      expect(body).toHaveProperty("recovered", 3);
-      expect(body).toHaveProperty("active", 4);
-      expect(body).toHaveProperty("affectedCountries", 5);
-      done();
-    });
-  });
-});
-
-test("Test bad session response", () => {
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (done, reject) => {
-    await prepareDb();
-
-    const event = {
-      httpMethod: "GET",
-      headers: { "Session-id": "test" },
-    };
-
-    handler(event, {}, (err, response) => {
-      if (err) return reject(err);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty("statusCode", 400);
-      done();
-    });
-  });
-});
-
-test("Test not exists session response", () => {
-  return new Promise(async (done, reject) => {
-    await prepareDb();
-
-    const event = {
-      httpMethod: "GET",
-      headers: { "Session-Id": new mongoose.Types.ObjectId().toString() },
-    };
-
-    handler(event, {}, (err, response) => {
-      if (err) return reject(err);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty("statusCode", 404);
-      done();
-    });
-  });
-});
-
-test("Test cors", () => {
-  return new Promise(async (done, reject) => {
-    const event = {
-      httpMethod: "GET",
-    };
-
-    handler(event, {}, (err, response) => {
-      if (err) return reject(err);
+      if (err) return done(err);
+      expect(response.headers).toHaveProperty(
+        "Content-Type",
+        "application/json; charset=utf-8"
+      );
       expect(response.headers).toHaveProperty("Access-Control-Allow-Origin");
       done();
     });
+  });
+});
+
+test("Test normal db response", async (done) => {
+  const event = {
+    httpMethod: "GET",
+  };
+
+  handler(event, {}, (err, response) => {
+    if (err) return done(err);
+    const body = JSON.parse(response.body);
+    expect(body).toEqual(omit(summaries[1], "commitSHA"));
+    const event = {
+      httpMethod: "GET",
+      headers: { "session-id": lastSessionId },
+    };
+    handler(event, {}, (err, response) => {
+      if (err) return done(err);
+      const body = JSON.parse(response.body);
+      expect(body).toEqual(omit(summaries[1], "commitSHA"));
+      done();
+    });
+  });
+});
+
+test("Test prev session response", async (done) => {
+  const event = {
+    httpMethod: "GET",
+    headers: { "session-id": sessionId },
+  };
+
+  handler(event, {}, (err, response) => {
+    if (err) return done(err);
+    const body = JSON.parse(response.body);
+    expect(body).toEqual(omit(summaries[0], "commitSHA"));
+    done();
+  });
+});
+
+test("Test bad session response", async (done) => {
+  await prepareDb();
+
+  const event = {
+    httpMethod: "GET",
+    headers: { "Session-id": "test" },
+  };
+
+  handler(event, {}, (err, response) => {
+    if (err) return done(err);
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty("statusCode", 400);
+    done();
+  });
+});
+
+test("Test not exists session response", async (done) => {
+  const event = {
+    httpMethod: "GET",
+    headers: { "Session-Id": new mongoose.Types.ObjectId().toString() },
+  };
+
+  handler(event, {}, (err, response) => {
+    if (err) return done(err);
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty("statusCode", 404);
+    done();
+  });
+});
+
+test("Test archive session response", async (done) => {
+  const event = {
+    httpMethod: "GET",
+    headers: { "Session-Id": archiveSessionId },
+  };
+
+  handler(event, {}, (err, response) => {
+    if (err) return done(err);
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty("statusCode", 404);
+    done();
   });
 });

@@ -5,20 +5,21 @@ const normalizedResponse = () => {
     after: (handler, next) => {
       const { body, headers, ...other } = handler.response;
       handler.response = {
+        ...other,
         body: JSON.stringify(body),
         headers: {
           ...headers,
           "Content-Type": "application/json; charset=utf-8",
         },
-        ...other,
       };
       next();
     },
 
     onError: async (handler) => {
       const { error } = handler;
+      let response;
       if (typeof error.statusCode === "number") {
-        handler.response = {
+        response = {
           body: JSON.stringify({
             message: error.message,
             statusCode: error.statusCode,
@@ -26,7 +27,7 @@ const normalizedResponse = () => {
           statusCode: error.statusCode,
         };
       } else {
-        handler.response = {
+        response = {
           body: JSON.stringify({
             message: "Internal server error!",
             statusCode: 500,
@@ -34,6 +35,12 @@ const normalizedResponse = () => {
           statusCode: 500,
         };
       }
+      handler.response = {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        ...response,
+      };
       if (env !== "test") {
         console.error(error);
       }

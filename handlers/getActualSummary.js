@@ -30,4 +30,4 @@ const handler = middy(processHandler)
   .use(normalizedResponse())
   .use(cors());
 
-module.exports = { handler, processHandler };
+module.exports = { handler };
