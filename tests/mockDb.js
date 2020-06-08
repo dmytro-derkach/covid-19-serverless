@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
-process.env.MONGODB_URI = "mongodb://localhost:27017/test";
-process.env.DATABASE_NAME = "test";
+process.env.MONGODB_URI = "mongodb://localhost:27017";
 
 const connectDatabase = async () => {
   await mongoose.connect(process.env.MONGODB_URI, {

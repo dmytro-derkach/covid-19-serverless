@@ -1,5 +1,5 @@
 process.env.ENV = "test";
-process.env.DATABASE_NAME = "test";
+process.env.DATABASE_NAME = "test1";
 require("./mockSSM");
 const {
   connectDatabase,
@@ -9,25 +9,55 @@ const {
 const omit = require("lodash.omit");
 const mongoose = require("mongoose");
 const ParserSession = require("@models/parserSession");
-const ActualSummary = require("@models/actualSummary");
-const { handler } = require("../handlers/getActualSummary");
+const ActualCountries = require("@models/actualCountries");
+const { handler } = require("../handlers/getActualCountries");
 
 let sessionId, lastSessionId, archiveSessionId;
-const summaries = [
+const prevCountries = [
   {
-    confirmed: 1,
-    deaths: 2,
-    recovered: 3,
-    active: 4,
-    affectedCountries: 5,
+    country: "test",
+    lastUpdate: new Date().toJSON(),
+    lat: "test",
+    long: "test",
+    confirmed: 100,
+    deaths: 200,
+    recovered: 300,
+    active: 400,
     commitSHA: "test",
   },
   {
-    confirmed: 6,
-    deaths: 7,
-    recovered: 8,
-    active: 9,
-    affectedCountries: 10,
+    country: "test1",
+    lastUpdate: new Date().toJSON(),
+    lat: "test",
+    long: "test",
+    confirmed: 10,
+    deaths: 20,
+    recovered: 30,
+    active: 40,
+    commitSHA: "test",
+  },
+];
+const lastCountries = [
+  {
+    country: "test1",
+    lastUpdate: new Date().toJSON(),
+    lat: "test",
+    long: "test",
+    confirmed: 10,
+    deaths: 200,
+    recovered: 30,
+    active: 400,
+    commitSHA: "test1",
+  },
+  {
+    country: "test",
+    lastUpdate: new Date().toJSON(),
+    lat: "test",
+    long: "test",
+    confirmed: 100,
+    deaths: 20,
+    recovered: 300,
+    active: 40,
     commitSHA: "test1",
   },
 ];
@@ -71,7 +101,8 @@ const prepareDb = async () => {
       isUsing: false,
     })
   )._id;
-  await ActualSummary.insertMany(summaries);
+  await ActualCountries.insertMany(prevCountries);
+  await ActualCountries.insertMany(lastCountries);
   await disconnectDatabase();
 };
 
@@ -121,7 +152,10 @@ test("Test normal db response", async (done) => {
   handler(event, {}, (err, response) => {
     if (err) return done(err);
     const body = JSON.parse(response.body);
-    expect(body).toEqual(omit(summaries[1], "commitSHA"));
+    expect(body).toEqual([
+      omit(lastCountries[1], "commitSHA"),
+      omit(lastCountries[0], "commitSHA"),
+    ]);
     const event = {
       httpMethod: "GET",
       headers: { "session-id": lastSessionId },
@@ -129,8 +163,70 @@ test("Test normal db response", async (done) => {
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
-      expect(body).toEqual(omit(summaries[1], "commitSHA"));
+      expect(body).toEqual([
+        omit(lastCountries[1], "commitSHA"),
+        omit(lastCountries[0], "commitSHA"),
+      ]);
       done();
+    });
+  });
+});
+
+test("Test sort response", async (done) => {
+  const event = {
+    httpMethod: "GET",
+    pathParameters: { sortBy: "deaths" },
+  };
+
+  handler(event, {}, (err, response) => {
+    if (err) return done(err);
+    const body = JSON.parse(response.body);
+    expect(body).toEqual([
+      omit(lastCountries[0], "commitSHA"),
+      omit(lastCountries[1], "commitSHA"),
+    ]);
+
+    const event = {
+      httpMethod: "GET",
+      headers: { "session-id": lastSessionId },
+      pathParameters: { sortBy: "recovered" },
+    };
+
+    handler(event, {}, (err, response) => {
+      if (err) return done(err);
+      const body = JSON.parse(response.body);
+      expect(body).toEqual([
+        omit(lastCountries[1], "commitSHA"),
+        omit(lastCountries[0], "commitSHA"),
+      ]);
+
+      const event = {
+        httpMethod: "GET",
+        headers: { "session-id": lastSessionId },
+        pathParameters: { sortBy: "alphabetic" },
+      };
+
+      handler(event, {}, (err, response) => {
+        if (err) return done(err);
+        const body = JSON.parse(response.body);
+        expect(body).toEqual([
+          omit(lastCountries[1], "commitSHA"),
+          omit(lastCountries[0], "commitSHA"),
+        ]);
+
+        const event = {
+          httpMethod: "GET",
+          headers: { "session-id": lastSessionId },
+          pathParameters: { sortBy: "wrong" },
+        };
+
+        handler(event, {}, (err, response) => {
+          if (err) return done(err);
+          const body = JSON.parse(response.body);
+          expect(body).toHaveProperty("statusCode", 400);
+          done();
+        });
+      });
     });
   });
 });
@@ -144,7 +240,10 @@ test("Test prev session response", async (done) => {
   handler(event, {}, (err, response) => {
     if (err) return done(err);
     const body = JSON.parse(response.body);
-    expect(body).toEqual(omit(summaries[0], "commitSHA"));
+    expect(body).toEqual([
+      omit(prevCountries[0], "commitSHA"),
+      omit(prevCountries[1], "commitSHA"),
+    ]);
     done();
   });
 });
