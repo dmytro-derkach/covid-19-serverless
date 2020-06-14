@@ -6,69 +6,48 @@ const {
   disconnectDatabase,
   dropDatabase,
 } = require("./mockDb");
-const omit = require("lodash.omit");
+const { v4: uuid } = require("uuid");
+const { randomInteger, sort } = require("./utils");
 const mongoose = require("mongoose");
 const ParserSession = require("@models/parserSession");
 const ActualAll = require("@models/actualAll");
 const { handler } = require("../handlers/getActualCountry");
 
 let sessionId, lastSessionId, archiveSessionId;
-const prevAlls = [
-  {
-    city: "test",
-    state: "test",
-    country: "test1",
-    lastUpdate: new Date().toJSON(),
+const cities = new Array(2).fill(0).map(() => uuid());
+const states = new Array(2).fill(0).map(() => uuid());
+const prevAlls = new Array(randomInteger(100, 300))
+  .fill({ date: new Date().toJSON(), country: uuid() })
+  .map((el, index) => ({
+    city: uuid(),
+    state: uuid(),
+    country: el.country,
+    lastUpdate: el.date,
     lat: "test",
     long: "test",
-    confirmed: 100,
-    deaths: 200,
-    recovered: 300,
-    active: 400,
+    confirmed: randomInteger(10, 100),
+    deaths: randomInteger(10, 100),
+    recovered: randomInteger(10, 100),
+    active: randomInteger(10, 100),
     commitSHA: "test",
-  },
-  {
-    city: "test1",
-    state: "test1",
-    country: "test1",
-    lastUpdate: new Date().toJSON(),
+    sort: index,
+  }));
+const lastAlls = new Array(randomInteger(100, 300))
+  .fill({ date: new Date().toJSON(), country: uuid() })
+  .map((el, index) => ({
+    city: cities[randomInteger(0, 1)],
+    state: states[randomInteger(0, 1)],
+    country: el.country,
+    lastUpdate: el.date,
     lat: "test",
     long: "test",
-    confirmed: 10,
-    deaths: 20,
-    recovered: 30,
-    active: 40,
-    commitSHA: "test",
-  },
-];
-const lastAlls = [
-  {
-    city: "test1",
-    state: "test1",
-    country: "test",
-    lastUpdate: new Date().toJSON(),
-    lat: "test",
-    long: "test",
-    confirmed: 10,
-    deaths: 200,
-    recovered: 30,
-    active: 400,
+    confirmed: randomInteger(10, 100),
+    deaths: randomInteger(10, 100),
+    recovered: randomInteger(10, 100),
+    active: randomInteger(10, 100),
     commitSHA: "test1",
-  },
-  {
-    city: "test",
-    state: "test",
-    country: "test",
-    lastUpdate: new Date().toJSON(),
-    lat: "test",
-    long: "test",
-    confirmed: 100,
-    deaths: 20,
-    recovered: 300,
-    active: 40,
-    commitSHA: "test1",
-  },
-];
+    sort: index,
+  }));
 
 beforeAll(async (done) => {
   await dropDatabase();
@@ -171,28 +150,22 @@ describe("db tests", () => {
   test("Test normal db response", async (done) => {
     const event = {
       httpMethod: "GET",
-      pathParameters: { countryName: "test" },
+      pathParameters: { countryName: lastAlls[0].country },
     };
 
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
-      expect(body).toEqual([
-        omit(lastAlls[1], "commitSHA"),
-        omit(lastAlls[0], "commitSHA"),
-      ]);
+      expect(body).toEqual(sort(lastAlls, "confirmed"));
       const event = {
         httpMethod: "GET",
         headers: { "session-id": lastSessionId },
-        pathParameters: { countryName: "test" },
+        pathParameters: { countryName: lastAlls[0].country },
       };
       handler(event, {}, (err, response) => {
         if (err) return done(err);
         const body = JSON.parse(response.body);
-        expect(body).toEqual([
-          omit(lastAlls[1], "commitSHA"),
-          omit(lastAlls[0], "commitSHA"),
-        ]);
+        expect(body).toEqual(sort(lastAlls, "confirmed"));
         done();
       });
     });
@@ -225,56 +198,73 @@ describe("db tests", () => {
   test("Test sort response", async (done) => {
     const event = {
       httpMethod: "GET",
-      pathParameters: { countryName: "test", sortBy: "deaths" },
+      pathParameters: { countryName: lastAlls[0].country, sortBy: "deaths" },
     };
 
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
-      expect(body).toEqual([
-        omit(lastAlls[0], "commitSHA"),
-        omit(lastAlls[1], "commitSHA"),
-      ]);
+      expect(body).toEqual(sort(lastAlls, "deaths"));
 
       const event = {
         httpMethod: "GET",
         headers: { "session-id": lastSessionId },
-        pathParameters: { countryName: "test", sortBy: "recovered" },
+        pathParameters: {
+          countryName: lastAlls[0].country,
+          sortBy: "recovered",
+        },
       };
 
       handler(event, {}, (err, response) => {
         if (err) return done(err);
         const body = JSON.parse(response.body);
-        expect(body).toEqual([
-          omit(lastAlls[1], "commitSHA"),
-          omit(lastAlls[0], "commitSHA"),
-        ]);
+        expect(body).toEqual(sort(lastAlls, "recovered"));
 
         const event = {
           httpMethod: "GET",
           headers: { "session-id": lastSessionId },
-          pathParameters: { countryName: "test", sortBy: "alphabetic" },
+          pathParameters: {
+            countryName: lastAlls[0].country,
+            sortBy: "active",
+          },
         };
 
         handler(event, {}, (err, response) => {
           if (err) return done(err);
           const body = JSON.parse(response.body);
-          expect(body).toEqual([
-            omit(lastAlls[1], "commitSHA"),
-            omit(lastAlls[0], "commitSHA"),
-          ]);
+          expect(body).toEqual(sort(lastAlls, "active"));
 
           const event = {
             httpMethod: "GET",
             headers: { "session-id": lastSessionId },
-            pathParameters: { countryName: "test", sortBy: "wrong" },
+            pathParameters: {
+              countryName: lastAlls[0].country,
+              sortBy: "alphabetic",
+            },
           };
 
           handler(event, {}, (err, response) => {
             if (err) return done(err);
             const body = JSON.parse(response.body);
-            expect(body).toHaveProperty("statusCode", 400);
-            done();
+            expect(body).toEqual(
+              sort(lastAlls, "alphabetic", ["city", "state"])
+            );
+
+            const event = {
+              httpMethod: "GET",
+              headers: { "session-id": lastSessionId },
+              pathParameters: {
+                countryName: lastAlls[0].country,
+                sortBy: "wrong",
+              },
+            };
+
+            handler(event, {}, (err, response) => {
+              if (err) return done(err);
+              const body = JSON.parse(response.body);
+              expect(body).toHaveProperty("statusCode", 400);
+              done();
+            });
           });
         });
       });
@@ -285,16 +275,13 @@ describe("db tests", () => {
     const event = {
       httpMethod: "GET",
       headers: { "session-id": sessionId },
-      pathParameters: { countryName: "test1" },
+      pathParameters: { countryName: prevAlls[0].country },
     };
 
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
-      expect(body).toEqual([
-        omit(prevAlls[0], "commitSHA"),
-        omit(prevAlls[1], "commitSHA"),
-      ]);
+      expect(body).toEqual(sort(prevAlls, "confirmed"));
       done();
     });
   });

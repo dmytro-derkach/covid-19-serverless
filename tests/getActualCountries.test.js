@@ -6,61 +6,42 @@ const {
   disconnectDatabase,
   dropDatabase,
 } = require("./mockDb");
-const omit = require("lodash.omit");
+const { v4: uuid } = require("uuid");
+const { randomInteger, sort } = require("./utils");
 const mongoose = require("mongoose");
 const ParserSession = require("@models/parserSession");
 const ActualCountries = require("@models/actualCountries");
 const { handler } = require("../handlers/getActualCountries");
 
 let sessionId, lastSessionId, archiveSessionId;
-const prevCountries = [
-  {
-    country: "test",
-    lastUpdate: new Date().toJSON(),
+const prevCountries = new Array(randomInteger(100, 300))
+  .fill(new Date().toJSON())
+  .map((el, index) => ({
+    country: uuid(),
+    lastUpdate: el,
     lat: "test",
     long: "test",
-    confirmed: 100,
-    deaths: 200,
-    recovered: 300,
-    active: 400,
+    confirmed: randomInteger(10, 100),
+    deaths: randomInteger(10, 100),
+    recovered: randomInteger(10, 100),
+    active: randomInteger(10, 100),
     commitSHA: "test",
-  },
-  {
-    country: "test1",
-    lastUpdate: new Date().toJSON(),
+    sort: index,
+  }));
+const lastCountries = new Array(randomInteger(100, 300))
+  .fill(new Date().toJSON())
+  .map((el, index) => ({
+    country: uuid(),
+    lastUpdate: el,
     lat: "test",
     long: "test",
-    confirmed: 10,
-    deaths: 20,
-    recovered: 30,
-    active: 40,
-    commitSHA: "test",
-  },
-];
-const lastCountries = [
-  {
-    country: "test1",
-    lastUpdate: new Date().toJSON(),
-    lat: "test",
-    long: "test",
-    confirmed: 10,
-    deaths: 200,
-    recovered: 30,
-    active: 400,
+    confirmed: randomInteger(10, 100),
+    deaths: randomInteger(10, 100),
+    recovered: randomInteger(10, 100),
+    active: randomInteger(10, 100),
     commitSHA: "test1",
-  },
-  {
-    country: "test",
-    lastUpdate: new Date().toJSON(),
-    lat: "test",
-    long: "test",
-    confirmed: 100,
-    deaths: 20,
-    recovered: 300,
-    active: 40,
-    commitSHA: "test1",
-  },
-];
+    sort: index,
+  }));
 
 beforeAll(async (done) => {
   await dropDatabase();
@@ -165,10 +146,7 @@ describe("db tests", () => {
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
-      expect(body).toEqual([
-        omit(lastCountries[1], "commitSHA"),
-        omit(lastCountries[0], "commitSHA"),
-      ]);
+      expect(body).toEqual(sort(lastCountries, "confirmed"));
       const event = {
         httpMethod: "GET",
         headers: { "session-id": lastSessionId },
@@ -176,10 +154,7 @@ describe("db tests", () => {
       handler(event, {}, (err, response) => {
         if (err) return done(err);
         const body = JSON.parse(response.body);
-        expect(body).toEqual([
-          omit(lastCountries[1], "commitSHA"),
-          omit(lastCountries[0], "commitSHA"),
-        ]);
+        expect(body).toEqual(sort(lastCountries, "confirmed"));
         done();
       });
     });
@@ -194,10 +169,7 @@ describe("db tests", () => {
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
-      expect(body).toEqual([
-        omit(lastCountries[0], "commitSHA"),
-        omit(lastCountries[1], "commitSHA"),
-      ]);
+      expect(body).toEqual(sort(lastCountries, "deaths"));
 
       const event = {
         httpMethod: "GET",
@@ -208,36 +180,42 @@ describe("db tests", () => {
       handler(event, {}, (err, response) => {
         if (err) return done(err);
         const body = JSON.parse(response.body);
-        expect(body).toEqual([
-          omit(lastCountries[1], "commitSHA"),
-          omit(lastCountries[0], "commitSHA"),
-        ]);
+        expect(body).toEqual(sort(lastCountries, "recovered"));
 
         const event = {
           httpMethod: "GET",
           headers: { "session-id": lastSessionId },
-          pathParameters: { sortBy: "alphabetic" },
+          pathParameters: { sortBy: "active" },
         };
 
         handler(event, {}, (err, response) => {
           if (err) return done(err);
           const body = JSON.parse(response.body);
-          expect(body).toEqual([
-            omit(lastCountries[1], "commitSHA"),
-            omit(lastCountries[0], "commitSHA"),
-          ]);
+          expect(body).toEqual(sort(lastCountries, "active"));
 
           const event = {
             httpMethod: "GET",
             headers: { "session-id": lastSessionId },
-            pathParameters: { sortBy: "wrong" },
+            pathParameters: { sortBy: "alphabetic" },
           };
 
           handler(event, {}, (err, response) => {
             if (err) return done(err);
             const body = JSON.parse(response.body);
-            expect(body).toHaveProperty("statusCode", 400);
-            done();
+            expect(body).toEqual(sort(lastCountries, "alphabetic", "country"));
+
+            const event = {
+              httpMethod: "GET",
+              headers: { "session-id": lastSessionId },
+              pathParameters: { sortBy: "wrong" },
+            };
+
+            handler(event, {}, (err, response) => {
+              if (err) return done(err);
+              const body = JSON.parse(response.body);
+              expect(body).toHaveProperty("statusCode", 400);
+              done();
+            });
           });
         });
       });
@@ -253,10 +231,7 @@ describe("db tests", () => {
     handler(event, {}, (err, response) => {
       if (err) return done(err);
       const body = JSON.parse(response.body);
-      expect(body).toEqual([
-        omit(prevCountries[0], "commitSHA"),
-        omit(prevCountries[1], "commitSHA"),
-      ]);
+      expect(body).toEqual(sort(prevCountries, "confirmed"));
       done();
     });
   });
