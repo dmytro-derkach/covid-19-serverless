@@ -21,7 +21,7 @@
     "@middy/validator": "^1.0.0-beta.8",
     "@middy/warmup": "^1.0.0",
     "aws-sdk": "^2.656.0",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "csv-string": "^3.2.0",
     "http-errors": "^1.7.3",
     "lodash.get": "^4.4.2",
