@@ -46,7 +46,7 @@
     "jest": "^26.0.1",
     "lint-staged": "^10.1.2",
     "lodash.omit": "^4.5.0",
-    "pm2": "^4.4.0",
+    "pm2": "^5.2.0",
     "prettier": "^2.0.2",
     "serverless-domain-manager": "^3.3.2",
     "serverless-jest-plugin": "^0.3.0",
