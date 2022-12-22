@@ -50,7 +50,7 @@
     "prettier": "^2.0.2",
     "serverless-domain-manager": "^3.3.2",
     "serverless-jest-plugin": "^0.3.0",
-    "serverless-offline": "^6.1.5",
+    "serverless-offline": "^12.0.3",
     "serverless-plugin-warmup": "^4.9.0",
     "uuid": "^8.1.0"
   },
